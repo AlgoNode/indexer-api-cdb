@@ -2002,7 +2002,6 @@ func (db *IndexerDb) buildAccountQuery(opts idb.AccountQueryOptions, countOnly b
 		aq := fmt.Sprintf("SELECT addr FROM account_app WHERE app = $%d", partNumber)
 		whereArgs = append(whereArgs, opts.HasAppID)
 		partNumber++
-
 		if len(opts.GreaterThanAddress) > 0 {
 			aq += fmt.Sprintf(" AND addr > $%d", partNumber)
 			whereArgs = append(whereArgs, opts.GreaterThanAddress)
