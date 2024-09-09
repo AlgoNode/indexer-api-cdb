@@ -80,7 +80,11 @@
           },
           {
             "type": "integer",
+<<<<<<< HEAD
             "description": "Deprecated and disallowed. This parameter used to include results for a specified round. Requests with this parameter set are now rejected.",
+=======
+            "description": "Include results for the specified round. For performance reasons, this parameter may be disabled on some configurations. Using application-id or asset-id filters will return both creator and opt-in accounts. Filtering by include-all will return creator and opt-in accounts for deleted assets and accounts. Non-opt-in managers are not included in the results when asset-id is used.",
+>>>>>>> 1816222 (Add `group-id` filter to `GET /v2/transactions`)
             "name": "round",
             "in": "query"
           },
@@ -2952,10 +2956,16 @@
     },
     "group-id": {
       "type": "string",
+<<<<<<< HEAD
       "description": "Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters like +, / and = must be URL-encoded",
       "name": "group-id",
       "in": "query",
       "x-algorand-format": "base64"
+=======
+      "description": "Lookup transactions by group ID.",
+      "name": "group-id",
+      "in": "query"
+>>>>>>> 1816222 (Add `group-id` filter to `GET /v2/transactions`)
     },
     "txid": {
       "type": "string",
