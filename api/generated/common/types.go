@@ -1189,6 +1189,9 @@ type ExcludeCloseTo = bool
 // Expired defines model for expired.
 type Expired = []string
 
+// GroupId defines model for group-id.
+type GroupId = string
+
 // HeaderOnly defines model for header-only.
 type HeaderOnly = bool
 
