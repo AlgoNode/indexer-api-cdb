@@ -15,8 +15,8 @@ import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
-// BlockRow is metadata relating to one block in a block query.
-type BlockRow struct {
+// BlockHeaderRow is metadata relating to one block in a block query.
+type BlockHeaderRow struct {
 	BlockHeader sdk.BlockHeader
 
 	// Error indicates that there was an internal problem processing the expected block.
@@ -24,7 +24,7 @@ type BlockRow struct {
 }
 
 // Next returns what should be an opaque string to be used with the next query to resume where a previous limit left off.
-func (br BlockRow) Next() (string, error) {
+func (br BlockHeaderRow) Next() (string, error) {
 
 	var b [8]byte
 	binary.LittleEndian.PutUint64(b[:8], uint64(br.BlockHeader.Round))
@@ -205,7 +205,7 @@ type IndexerDb interface {
 
 	// The next multiple functions return a channel with results as well as the latest round
 	// accounted.
-	BlockHeaders(ctx context.Context, bf BlockHeaderFilter) (<-chan BlockRow, uint64)
+	BlockHeaders(ctx context.Context, bf BlockHeaderFilter) (<-chan BlockHeaderRow, uint64)
 	Transactions(ctx context.Context, tf TransactionFilter) (<-chan TxnRow, uint64)
 	GetAccounts(ctx context.Context, opts AccountQueryOptions) (<-chan AccountRow, uint64)
 	Assets(ctx context.Context, filter AssetsQuery) (<-chan AssetRow, uint64)

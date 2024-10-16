@@ -300,7 +300,7 @@ func txnRowToTransaction(row idb.TxnRow) (generated.Transaction, error) {
 	return txn, nil
 }
 
-func hdrRowToBlock(row idb.BlockRow) generated.Block {
+func hdrRowToBlock(row idb.BlockHeaderRow) generated.BlockHeader {
 
 	rewards := generated.BlockRewards{
 		FeeSink:                 row.BlockHeader.FeeSink.String(),
@@ -364,7 +364,7 @@ func hdrRowToBlock(row idb.BlockRow) generated.Block {
 		trackingArray[orderedTrackingTypes[i]] = thing1
 	}
 
-	ret := generated.Block{
+	ret := generated.BlockHeader{
 		Bonus:                  uint64PtrOrNil(uint64(row.BlockHeader.Bonus)),
 		FeesCollected:          uint64PtrOrNil(uint64(row.BlockHeader.FeesCollected)),
 		GenesisHash:            row.BlockHeader.GenesisHash[:],
@@ -378,7 +378,6 @@ func hdrRowToBlock(row idb.BlockRow) generated.Block {
 		Seed:                   row.BlockHeader.Seed[:],
 		StateProofTracking:     &trackingArray,
 		Timestamp:              uint64(row.BlockHeader.TimeStamp),
-		Transactions:           nil,
 		TransactionsRoot:       row.BlockHeader.TxnCommitments.NativeSha512_256Commitment[:],
 		TransactionsRootSha256: row.BlockHeader.TxnCommitments.Sha256Commitment[:],
 		TxnCounter:             uint64Ptr(row.BlockHeader.TxnCounter),
@@ -860,7 +859,24 @@ func (si *ServerImplementation) transactionParamsToTransactionFilter(params gene
 	return
 }
 
-func (si *ServerImplementation) blockParamsToBlockFilter(params generated.SearchForBlockHeadersParams) (filter idb.BlockHeaderFilter, err error) {
+func (si *ServerImplementation) blockParamsToBlockHeadersFilter(params generated.SearchForBlocksParams) (filter idb.BlockHeaderFilter, err error) {
+
+	p := generated.SearchForBlockHeadersParams{
+		Limit:      params.Limit,
+		Next:       params.Next,
+		MinRound:   params.MinRound,
+		MaxRound:   params.MaxRound,
+		BeforeTime: params.BeforeTime,
+		AfterTime:  params.AfterTime,
+		Proposers:  params.Proposers,
+		Expired:    params.Expired,
+		Absent:     params.Absent,
+	}
+
+	return si.blockHeadersParamsToBlockHeadersFilter(p)
+}
+
+func (si *ServerImplementation) blockHeadersParamsToBlockHeadersFilter(params generated.SearchForBlockHeadersParams) (filter idb.BlockHeaderFilter, err error) {
 
 	var errs []error
 

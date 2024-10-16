@@ -187,23 +187,23 @@ func (_m *IndexerDb) Assets(ctx context.Context, filter idb.AssetsQuery) (<-chan
 }
 
 // BlockHeaders provides a mock function with given fields: ctx, bf
-func (_m *IndexerDb) BlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) (<-chan idb.BlockRow, uint64) {
+func (_m *IndexerDb) BlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) (<-chan idb.BlockHeaderRow, uint64) {
 	ret := _m.Called(ctx, bf)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BlockHeaders")
 	}
 
-	var r0 <-chan idb.BlockRow
+	var r0 <-chan idb.BlockHeaderRow
 	var r1 uint64
-	if rf, ok := ret.Get(0).(func(context.Context, idb.BlockHeaderFilter) (<-chan idb.BlockRow, uint64)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, idb.BlockHeaderFilter) (<-chan idb.BlockHeaderRow, uint64)); ok {
 		return rf(ctx, bf)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, idb.BlockHeaderFilter) <-chan idb.BlockRow); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, idb.BlockHeaderFilter) <-chan idb.BlockHeaderRow); ok {
 		r0 = rf(ctx, bf)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan idb.BlockRow)
+			r0 = ret.Get(0).(<-chan idb.BlockHeaderRow)
 		}
 	}
 

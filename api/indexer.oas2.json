@@ -855,7 +855,7 @@
     },
     "/v2/block-headers": {
       "get": {
-        "description": "Search for block headers. Block headers are returned in ascending round order. Transactions are not included in the output.",
+        "description": "Search for block headers. Blocks headers are returned in ascending round order. Transactions are not included in the output.",
         "consumes": [
           "application/json"
         ],
@@ -866,6 +866,61 @@
           "search"
         ],
         "operationId": "searchForBlockHeaders",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/next"
+          },
+          {
+            "$ref": "#/parameters/min-round"
+          },
+          {
+            "$ref": "#/parameters/max-round"
+          },
+          {
+            "$ref": "#/parameters/before-time"
+          },
+          {
+            "$ref": "#/parameters/after-time"
+          },
+          {
+            "$ref": "#/parameters/proposers"
+          },
+          {
+            "$ref": "#/parameters/expired"
+          },
+          {
+            "$ref": "#/parameters/absent"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/BlockHeadersResponse"
+          },
+          "404": {
+            "$ref": "#/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/v2/blocks": {
+      "get": {
+        "description": "Search for block headers. Blocks headers are returned in ascending round order. Transactions are not included in the output.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "search"
+        ],
+        "operationId": "searchForBlocks",
         "parameters": [
           {
             "$ref": "#/parameters/limit"
@@ -1620,6 +1675,99 @@
           "description": "Base64 encoded URL where more information about the asset can be retrieved.",
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "BlockHeader": {
+      "description": "Block information. Does not include transactions.\n\nDefinition:\ndata/bookkeeping/block.go : Block",
+      "type": "object",
+      "required": [
+        "round",
+        "previous-block-hash",
+        "seed",
+        "transactions-root",
+        "transactions-root-sha256",
+        "timestamp",
+        "genesis-id",
+        "genesis-hash"
+      ],
+      "properties": {
+        "proposer": {
+          "description": "the proposer of this block.",
+          "type": "string",
+          "x-algorand-format": "Address"
+        },
+        "fees-collected": {
+          "description": "the sum of all fees paid by transactions in this block.",
+          "type": "integer"
+        },
+        "bonus": {
+          "description": "the potential bonus payout for this block.",
+          "type": "integer"
+        },
+        "proposer-payout": {
+          "description": "the actual amount transferred to the proposer from the fee sink.",
+          "type": "integer"
+        },
+        "genesis-hash": {
+          "description": "\\[gh\\] hash to which this block belongs.",
+          "type": "string",
+          "format": "byte"
+        },
+        "genesis-id": {
+          "description": "\\[gen\\] ID to which this block belongs.",
+          "type": "string"
+        },
+        "previous-block-hash": {
+          "description": "\\[prev\\] Previous block hash.",
+          "type": "string",
+          "format": "byte"
+        },
+        "rewards": {
+          "$ref": "#/definitions/BlockRewards"
+        },
+        "round": {
+          "description": "\\[rnd\\] Current round on which this block was appended to the chain.",
+          "type": "integer"
+        },
+        "seed": {
+          "description": "\\[seed\\] Sortition seed.",
+          "type": "string",
+          "format": "byte"
+        },
+        "state-proof-tracking": {
+          "description": "Tracks the status of state proofs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StateProofTracking"
+          }
+        },
+        "timestamp": {
+          "description": "\\[ts\\] Block creation timestamp in seconds since eposh",
+          "type": "integer"
+        },
+        "transactions-root": {
+          "description": "\\[txn\\] TransactionsRoot authenticates the set of transactions appearing in the block. More specifically, it's the root of a merkle tree whose leaves are the block's Txids, in lexicographic order. For the empty block, it's 0. Note that the TxnRoot does not authenticate the signatures on the transactions, only the transactions themselves. Two blocks with the same transactions but in a different order and with different signatures will have the same TxnRoot.",
+          "type": "string",
+          "format": "byte"
+        },
+        "transactions-root-sha256": {
+          "description": "\\[txn256\\] TransactionsRootSHA256 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA256 hash function instead of the default SHA512_256. This commitment can be used on environments where only the SHA256 function exists.",
+          "type": "string",
+          "format": "byte"
+        },
+        "txn-counter": {
+          "description": "\\[tc\\] TxnCounter counts the number of transactions committed in the ledger, from the time at which support for this feature was introduced.\n\nSpecifically, TxnCounter is the number of the next transaction that will be committed after this block.  It is 0 when no transactions have ever been committed (since TxnCounter started being supported).",
+          "type": "integer"
+        },
+        "upgrade-state": {
+          "$ref": "#/definitions/BlockUpgradeState"
+        },
+        "upgrade-vote": {
+          "$ref": "#/definitions/BlockUpgradeVote"
+        },
+        "participation-updates": {
+          "$ref": "#/definitions/ParticipationUpdates"
         }
       }
     },
@@ -2952,23 +3100,10 @@
     },
     "group-id": {
       "type": "string",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "description": "Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters like +, / and = must be URL-encoded",
       "name": "group-id",
       "in": "query",
       "x-algorand-format": "base64"
-=======
-      "description": "Lookup transactions by group ID.",
-      "name": "group-id",
-      "in": "query"
->>>>>>> 1816222 (Add `group-id` filter to `GET /v2/transactions`)
-=======
-      "description": "Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters like +, / and = must be URL-encoded",
-      "name": "group-id",
-      "in": "query",
-      "x-algorand-format": "base64"
->>>>>>> 084fd66 (Swagger: update description for `group-id` param)
     },
     "txid": {
       "type": "string",
@@ -3310,7 +3445,7 @@
           "blocks": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/Block"
+              "$ref": "#/definitions/BlockHeader"
             }
           }
         }

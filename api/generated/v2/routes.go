@@ -8,21 +8,1316 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
+	"github.com/algorand/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (GET /v2/accounts)
+	SearchForAccounts(ctx echo.Context, params SearchForAccountsParams) error
+
+	// (GET /v2/accounts/{account-id})
+	LookupAccountByID(ctx echo.Context, accountId string, params LookupAccountByIDParams) error
+
+	// (GET /v2/accounts/{account-id}/apps-local-state)
+	LookupAccountAppLocalStates(ctx echo.Context, accountId string, params LookupAccountAppLocalStatesParams) error
+
+	// (GET /v2/accounts/{account-id}/assets)
+	LookupAccountAssets(ctx echo.Context, accountId string, params LookupAccountAssetsParams) error
+
+	// (GET /v2/accounts/{account-id}/created-applications)
+	LookupAccountCreatedApplications(ctx echo.Context, accountId string, params LookupAccountCreatedApplicationsParams) error
+
+	// (GET /v2/accounts/{account-id}/created-assets)
+	LookupAccountCreatedAssets(ctx echo.Context, accountId string, params LookupAccountCreatedAssetsParams) error
+
+	// (GET /v2/accounts/{account-id}/transactions)
+	LookupAccountTransactions(ctx echo.Context, accountId string, params LookupAccountTransactionsParams) error
+
+	// (GET /v2/applications)
+	SearchForApplications(ctx echo.Context, params SearchForApplicationsParams) error
+
+	// (GET /v2/applications/{application-id})
+	LookupApplicationByID(ctx echo.Context, applicationId uint64, params LookupApplicationByIDParams) error
+	// Get box information for a given application.
+	// (GET /v2/applications/{application-id}/box)
+	LookupApplicationBoxByIDAndName(ctx echo.Context, applicationId uint64, params LookupApplicationBoxByIDAndNameParams) error
+	// Get box names for a given application.
+	// (GET /v2/applications/{application-id}/boxes)
+	SearchForApplicationBoxes(ctx echo.Context, applicationId uint64, params SearchForApplicationBoxesParams) error
+
+	// (GET /v2/applications/{application-id}/logs)
+	LookupApplicationLogsByID(ctx echo.Context, applicationId uint64, params LookupApplicationLogsByIDParams) error
+
+	// (GET /v2/assets)
+	SearchForAssets(ctx echo.Context, params SearchForAssetsParams) error
+
+	// (GET /v2/assets/{asset-id})
+	LookupAssetByID(ctx echo.Context, assetId uint64, params LookupAssetByIDParams) error
+
+	// (GET /v2/assets/{asset-id}/balances)
+	LookupAssetBalances(ctx echo.Context, assetId uint64, params LookupAssetBalancesParams) error
+
+	// (GET /v2/assets/{asset-id}/transactions)
+	LookupAssetTransactions(ctx echo.Context, assetId uint64, params LookupAssetTransactionsParams) error
+
+	// (GET /v2/block-headers)
+	SearchForBlockHeaders(ctx echo.Context, params SearchForBlockHeadersParams) error
+
+	// (GET /v2/blocks)
+	SearchForBlocks(ctx echo.Context, params SearchForBlocksParams) error
+
+	// (GET /v2/blocks/{round-number})
+	LookupBlock(ctx echo.Context, roundNumber uint64, params LookupBlockParams) error
+
+	// (GET /v2/transactions)
+	SearchForTransactions(ctx echo.Context, params SearchForTransactionsParams) error
+
+	// (GET /v2/transactions/{txid})
+	LookupTransaction(ctx echo.Context, txid string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// SearchForAccounts converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForAccounts(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForAccountsParams
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-greater-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-greater-than", ctx.QueryParams(), &params.CurrencyGreaterThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-greater-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "exclude" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "exclude", ctx.QueryParams(), &params.Exclude)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter exclude: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-less-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-less-than", ctx.QueryParams(), &params.CurrencyLessThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-less-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "auth-addr" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "auth-addr", ctx.QueryParams(), &params.AuthAddr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter auth-addr: %s", err))
+	}
+
+	// ------------- Optional query parameter "round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "round", ctx.QueryParams(), &params.Round)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round: %s", err))
+	}
+
+	// ------------- Optional query parameter "application-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "application-id", ctx.QueryParams(), &params.ApplicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForAccounts(ctx, params)
+	return err
+}
+
+// LookupAccountByID converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountByID(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountByIDParams
+	// ------------- Optional query parameter "round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "round", ctx.QueryParams(), &params.Round)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "exclude" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "exclude", ctx.QueryParams(), &params.Exclude)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter exclude: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountByID(ctx, accountId, params)
+	return err
+}
+
+// LookupAccountAppLocalStates converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountAppLocalStates(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountAppLocalStatesParams
+	// ------------- Optional query parameter "application-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "application-id", ctx.QueryParams(), &params.ApplicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountAppLocalStates(ctx, accountId, params)
+	return err
+}
+
+// LookupAccountAssets converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountAssets(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountAssetsParams
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountAssets(ctx, accountId, params)
+	return err
+}
+
+// LookupAccountCreatedApplications converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountCreatedApplications(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountCreatedApplicationsParams
+	// ------------- Optional query parameter "application-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "application-id", ctx.QueryParams(), &params.ApplicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountCreatedApplications(ctx, accountId, params)
+	return err
+}
+
+// LookupAccountCreatedAssets converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountCreatedAssets(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountCreatedAssetsParams
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountCreatedAssets(ctx, accountId, params)
+	return err
+}
+
+// LookupAccountTransactions converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAccountTransactions(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "account-id" -------------
+	var accountId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "account-id", runtime.ParamLocationPath, ctx.Param("account-id"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter account-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAccountTransactionsParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "note-prefix" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "note-prefix", ctx.QueryParams(), &params.NotePrefix)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter note-prefix: %s", err))
+	}
+
+	// ------------- Optional query parameter "tx-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tx-type", ctx.QueryParams(), &params.TxType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tx-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "sig-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sig-type", ctx.QueryParams(), &params.SigType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sig-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "txid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "txid", ctx.QueryParams(), &params.Txid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter txid: %s", err))
+	}
+
+	// ------------- Optional query parameter "round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "round", ctx.QueryParams(), &params.Round)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "before-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "before-time", ctx.QueryParams(), &params.BeforeTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "after-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "after-time", ctx.QueryParams(), &params.AfterTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-greater-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-greater-than", ctx.QueryParams(), &params.CurrencyGreaterThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-greater-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-less-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-less-than", ctx.QueryParams(), &params.CurrencyLessThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-less-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "rekey-to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rekey-to", ctx.QueryParams(), &params.RekeyTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rekey-to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAccountTransactions(ctx, accountId, params)
+	return err
+}
+
+// SearchForApplications converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForApplications(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForApplicationsParams
+	// ------------- Optional query parameter "application-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "application-id", ctx.QueryParams(), &params.ApplicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "creator" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "creator", ctx.QueryParams(), &params.Creator)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter creator: %s", err))
+	}
+
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForApplications(ctx, params)
+	return err
+}
+
+// LookupApplicationByID converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupApplicationByID(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "application-id" -------------
+	var applicationId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "application-id", runtime.ParamLocationPath, ctx.Param("application-id"), &applicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupApplicationByIDParams
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupApplicationByID(ctx, applicationId, params)
+	return err
+}
+
+// LookupApplicationBoxByIDAndName converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupApplicationBoxByIDAndName(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "application-id" -------------
+	var applicationId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "application-id", runtime.ParamLocationPath, ctx.Param("application-id"), &applicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupApplicationBoxByIDAndNameParams
+	// ------------- Required query parameter "name" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "name", ctx.QueryParams(), &params.Name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupApplicationBoxByIDAndName(ctx, applicationId, params)
+	return err
+}
+
+// SearchForApplicationBoxes converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForApplicationBoxes(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "application-id" -------------
+	var applicationId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "application-id", runtime.ParamLocationPath, ctx.Param("application-id"), &applicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForApplicationBoxesParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForApplicationBoxes(ctx, applicationId, params)
+	return err
+}
+
+// LookupApplicationLogsByID converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupApplicationLogsByID(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "application-id" -------------
+	var applicationId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "application-id", runtime.ParamLocationPath, ctx.Param("application-id"), &applicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupApplicationLogsByIDParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "txid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "txid", ctx.QueryParams(), &params.Txid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter txid: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "sender-address" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sender-address", ctx.QueryParams(), &params.SenderAddress)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sender-address: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupApplicationLogsByID(ctx, applicationId, params)
+	return err
+}
+
+// SearchForAssets converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForAssets(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForAssetsParams
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "creator" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "creator", ctx.QueryParams(), &params.Creator)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter creator: %s", err))
+	}
+
+	// ------------- Optional query parameter "name" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "name", ctx.QueryParams(), &params.Name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	// ------------- Optional query parameter "unit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "unit", ctx.QueryParams(), &params.Unit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter unit: %s", err))
+	}
+
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForAssets(ctx, params)
+	return err
+}
+
+// LookupAssetByID converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAssetByID(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "asset-id" -------------
+	var assetId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "asset-id", runtime.ParamLocationPath, ctx.Param("asset-id"), &assetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAssetByIDParams
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAssetByID(ctx, assetId, params)
+	return err
+}
+
+// LookupAssetBalances converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAssetBalances(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "asset-id" -------------
+	var assetId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "asset-id", runtime.ParamLocationPath, ctx.Param("asset-id"), &assetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAssetBalancesParams
+	// ------------- Optional query parameter "include-all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include-all", ctx.QueryParams(), &params.IncludeAll)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter include-all: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-greater-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-greater-than", ctx.QueryParams(), &params.CurrencyGreaterThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-greater-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-less-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-less-than", ctx.QueryParams(), &params.CurrencyLessThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-less-than: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAssetBalances(ctx, assetId, params)
+	return err
+}
+
+// LookupAssetTransactions converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupAssetTransactions(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "asset-id" -------------
+	var assetId uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "asset-id", runtime.ParamLocationPath, ctx.Param("asset-id"), &assetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupAssetTransactionsParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "note-prefix" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "note-prefix", ctx.QueryParams(), &params.NotePrefix)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter note-prefix: %s", err))
+	}
+
+	// ------------- Optional query parameter "tx-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tx-type", ctx.QueryParams(), &params.TxType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tx-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "sig-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sig-type", ctx.QueryParams(), &params.SigType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sig-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "txid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "txid", ctx.QueryParams(), &params.Txid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter txid: %s", err))
+	}
+
+	// ------------- Optional query parameter "round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "round", ctx.QueryParams(), &params.Round)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "before-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "before-time", ctx.QueryParams(), &params.BeforeTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "after-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "after-time", ctx.QueryParams(), &params.AfterTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-greater-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-greater-than", ctx.QueryParams(), &params.CurrencyGreaterThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-greater-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-less-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-less-than", ctx.QueryParams(), &params.CurrencyLessThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-less-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "address" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "address", ctx.QueryParams(), &params.Address)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter address: %s", err))
+	}
+
+	// ------------- Optional query parameter "address-role" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "address-role", ctx.QueryParams(), &params.AddressRole)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter address-role: %s", err))
+	}
+
+	// ------------- Optional query parameter "exclude-close-to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "exclude-close-to", ctx.QueryParams(), &params.ExcludeCloseTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter exclude-close-to: %s", err))
+	}
+
+	// ------------- Optional query parameter "rekey-to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rekey-to", ctx.QueryParams(), &params.RekeyTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rekey-to: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupAssetTransactions(ctx, assetId, params)
+	return err
+}
+
+// SearchForBlockHeaders converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForBlockHeaders(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForBlockHeadersParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "before-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "before-time", ctx.QueryParams(), &params.BeforeTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "after-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "after-time", ctx.QueryParams(), &params.AfterTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "proposers" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "proposers", ctx.QueryParams(), &params.Proposers)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter proposers: %s", err))
+	}
+
+	// ------------- Optional query parameter "expired" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "expired", ctx.QueryParams(), &params.Expired)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter expired: %s", err))
+	}
+
+	// ------------- Optional query parameter "absent" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "absent", ctx.QueryParams(), &params.Absent)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter absent: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForBlockHeaders(ctx, params)
+	return err
+}
+
+// SearchForBlocks converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForBlocks(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForBlocksParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "before-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "before-time", ctx.QueryParams(), &params.BeforeTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "after-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "after-time", ctx.QueryParams(), &params.AfterTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "proposers" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "proposers", ctx.QueryParams(), &params.Proposers)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter proposers: %s", err))
+	}
+
+	// ------------- Optional query parameter "expired" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "expired", ctx.QueryParams(), &params.Expired)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter expired: %s", err))
+	}
+
+	// ------------- Optional query parameter "absent" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "absent", ctx.QueryParams(), &params.Absent)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter absent: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForBlocks(ctx, params)
+	return err
+}
+
+// LookupBlock converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupBlock(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "round-number" -------------
+	var roundNumber uint64
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "round-number", runtime.ParamLocationPath, ctx.Param("round-number"), &roundNumber)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round-number: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupBlockParams
+	// ------------- Optional query parameter "header-only" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "header-only", ctx.QueryParams(), &params.HeaderOnly)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter header-only: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupBlock(ctx, roundNumber, params)
+	return err
+}
+
+// SearchForTransactions converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchForTransactions(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchForTransactionsParams
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "next", ctx.QueryParams(), &params.Next)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter next: %s", err))
+	}
+
+	// ------------- Optional query parameter "note-prefix" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "note-prefix", ctx.QueryParams(), &params.NotePrefix)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter note-prefix: %s", err))
+	}
+
+	// ------------- Optional query parameter "tx-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "tx-type", ctx.QueryParams(), &params.TxType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tx-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "sig-type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sig-type", ctx.QueryParams(), &params.SigType)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sig-type: %s", err))
+	}
+
+	// ------------- Optional query parameter "group-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "group-id", ctx.QueryParams(), &params.GroupId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter group-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "txid" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "txid", ctx.QueryParams(), &params.Txid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter txid: %s", err))
+	}
+
+	// ------------- Optional query parameter "round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "round", ctx.QueryParams(), &params.Round)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter round: %s", err))
+	}
+
+	// ------------- Optional query parameter "min-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "min-round", ctx.QueryParams(), &params.MinRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter min-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "max-round" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "max-round", ctx.QueryParams(), &params.MaxRound)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter max-round: %s", err))
+	}
+
+	// ------------- Optional query parameter "asset-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "asset-id", ctx.QueryParams(), &params.AssetId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter asset-id: %s", err))
+	}
+
+	// ------------- Optional query parameter "before-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "before-time", ctx.QueryParams(), &params.BeforeTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "after-time" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "after-time", ctx.QueryParams(), &params.AfterTime)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after-time: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-greater-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-greater-than", ctx.QueryParams(), &params.CurrencyGreaterThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-greater-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "currency-less-than" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "currency-less-than", ctx.QueryParams(), &params.CurrencyLessThan)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter currency-less-than: %s", err))
+	}
+
+	// ------------- Optional query parameter "address" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "address", ctx.QueryParams(), &params.Address)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter address: %s", err))
+	}
+
+	// ------------- Optional query parameter "address-role" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "address-role", ctx.QueryParams(), &params.AddressRole)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter address-role: %s", err))
+	}
+
+	// ------------- Optional query parameter "exclude-close-to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "exclude-close-to", ctx.QueryParams(), &params.ExcludeCloseTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter exclude-close-to: %s", err))
+	}
+
+	// ------------- Optional query parameter "rekey-to" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "rekey-to", ctx.QueryParams(), &params.RekeyTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter rekey-to: %s", err))
+	}
+
+	// ------------- Optional query parameter "application-id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "application-id", ctx.QueryParams(), &params.ApplicationId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter application-id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.SearchForTransactions(ctx, params)
+	return err
+}
+
+// LookupTransaction converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupTransaction(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "txid" -------------
+	var txid string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "txid", runtime.ParamLocationPath, ctx.Param("txid"), &txid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter txid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.LookupTransaction(ctx, txid)
+	return err
 }
 
 // This is a simple interface which specifies echo.Route addition functions which
@@ -49,14 +1344,271 @@ func RegisterHandlers(router EchoRouter, si ServerInterface, m ...echo.Middlewar
 // can be served under a prefix.
 func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string, m ...echo.MiddlewareFunc) {
 
+	wrapper := ServerInterfaceWrapper{
+		Handler: si,
+	}
+
+	router.GET(baseURL+"/v2/accounts", wrapper.SearchForAccounts, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id", wrapper.LookupAccountByID, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id/apps-local-state", wrapper.LookupAccountAppLocalStates, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id/assets", wrapper.LookupAccountAssets, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id/created-applications", wrapper.LookupAccountCreatedApplications, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id/created-assets", wrapper.LookupAccountCreatedAssets, m...)
+	router.GET(baseURL+"/v2/accounts/:account-id/transactions", wrapper.LookupAccountTransactions, m...)
+	router.GET(baseURL+"/v2/applications", wrapper.SearchForApplications, m...)
+	router.GET(baseURL+"/v2/applications/:application-id", wrapper.LookupApplicationByID, m...)
+	router.GET(baseURL+"/v2/applications/:application-id/box", wrapper.LookupApplicationBoxByIDAndName, m...)
+	router.GET(baseURL+"/v2/applications/:application-id/boxes", wrapper.SearchForApplicationBoxes, m...)
+	router.GET(baseURL+"/v2/applications/:application-id/logs", wrapper.LookupApplicationLogsByID, m...)
+	router.GET(baseURL+"/v2/assets", wrapper.SearchForAssets, m...)
+	router.GET(baseURL+"/v2/assets/:asset-id", wrapper.LookupAssetByID, m...)
+	router.GET(baseURL+"/v2/assets/:asset-id/balances", wrapper.LookupAssetBalances, m...)
+	router.GET(baseURL+"/v2/assets/:asset-id/transactions", wrapper.LookupAssetTransactions, m...)
+	router.GET(baseURL+"/v2/block-headers", wrapper.SearchForBlockHeaders, m...)
+	router.GET(baseURL+"/v2/blocks", wrapper.SearchForBlocks, m...)
+	router.GET(baseURL+"/v2/blocks/:round-number", wrapper.LookupBlock, m...)
+	router.GET(baseURL+"/v2/transactions", wrapper.SearchForTransactions, m...)
+	router.GET(baseURL+"/v2/transactions/:txid", wrapper.LookupTransaction, m...)
+
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

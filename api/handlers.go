@@ -1008,15 +1008,16 @@ func (si *ServerImplementation) LookupTransaction(ctx echo.Context, txid string)
 }
 
 // SearchForBlockHeaders returns block headers matching the provided parameters
-// (GET /v2/blocks)
+// (GET /v2/block-headers)
 func (si *ServerImplementation) SearchForBlockHeaders(ctx echo.Context, params generated.SearchForBlockHeadersParams) error {
+
 	// Validate query parameters
 	if err := si.verifyHandler("SearchForBlockHeaders", ctx); err != nil {
 		return badRequest(ctx, err.Error())
 	}
 
 	// Convert query params into a filter
-	filter, err := si.blockParamsToBlockFilter(params)
+	filter, err := si.blockHeadersParamsToBlockHeadersFilter(params)
 	if err != nil {
 		return badRequest(ctx, err.Error())
 	}
@@ -1035,49 +1036,43 @@ func (si *ServerImplementation) SearchForBlockHeaders(ctx echo.Context, params g
 	response := generated.BlockHeadersResponse{
 		CurrentRound: round,
 		NextToken:    strPtr(next),
-		Blocks:       blockHeaders,
+		BlockHeaders: blockHeaders,
 	}
 	return ctx.JSON(http.StatusOK, response)
 }
 
-// fetchBlockHeaders is used to query the backend for block headers, and compute the next token
-func (si *ServerImplementation) fetchBlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) ([]generated.Block, string, uint64 /*round*/, error) {
+// SearchForBlocks returns block headers matching the provided parameters
+// (GET /v2/blocks)
+func (si *ServerImplementation) SearchForBlocks(ctx echo.Context, params generated.SearchForBlocksParams) error {
 
-	var round uint64
-	var nextToken string
-	results := make([]generated.Block, 0)
-	err := callWithTimeout(ctx, si.log, si.timeout, func(ctx context.Context) error {
-
-		// Open a channel from which result rows will be received
-		var rows <-chan idb.BlockRow
-		rows, round = si.db.BlockHeaders(ctx, bf)
-
-		// Iterate received rows, converting each to a generated.Block
-		var lastRow idb.BlockRow
-		for row := range rows {
-			if row.Error != nil {
-				return row.Error
-			}
-
-			results = append(results, hdrRowToBlock(row))
-			lastRow = row
-		}
-
-		// No next token if there were no results.
-		if len(results) == 0 {
-			return nil
-		}
-
-		// Generate the next token and return
-		var err error
-		nextToken, err = lastRow.Next()
-		return err
-	})
-	if err != nil {
-		return nil, "", 0, err
+	// Validate query parameters
+	if err := si.verifyHandler("SearchForBlocks", ctx); err != nil {
+		return badRequest(ctx, err.Error())
 	}
 
-	return results, nextToken, round, nil
+	// Convert query params into a filter
+	filter, err := si.blockParamsToBlockHeadersFilter(params)
+	if err != nil {
+		return badRequest(ctx, err.Error())
+	}
+	err = validateBlockFilter(&filter)
+	if err != nil {
+		return badRequest(ctx, err.Error())
+	}
+
+	// Fetch the block headers
+	blockHeaders, next, round, err := si.fetchBlockHeaders(ctx.Request().Context(), filter)
+	if err != nil {
+		return indexerError(ctx, fmt.Errorf("%s: %w", errBlockHeaderSearch, err))
+	}
+
+	// Populate the response model and render it
+	response := generated.BlockHeadersResponse{
+		CurrentRound: round,
+		NextToken:    strPtr(next),
+		BlockHeaders: blockHeaders,
+	}
+	return ctx.JSON(http.StatusOK, response)
 }
 
 // SearchForTransactions returns transactions matching the provided parameters
@@ -1513,6 +1508,46 @@ func (si *ServerImplementation) fetchAccounts(ctx context.Context, options idb.A
 		return nil, 0, err
 	}
 	return accounts, round, nil
+}
+
+// fetchBlockHeaders is used to query the backend for block headers, and compute the next token
+func (si *ServerImplementation) fetchBlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) ([]generated.BlockHeader, string, uint64 /*round*/, error) {
+
+	var round uint64
+	var nextToken string
+	results := make([]generated.BlockHeader, 0)
+	err := callWithTimeout(ctx, si.log, si.timeout, func(ctx context.Context) error {
+
+		// Open a channel from which result rows will be received
+		var rows <-chan idb.BlockHeaderRow
+		rows, round = si.db.BlockHeaders(ctx, bf)
+
+		// Iterate recieved rows, converting each to a generated.Block
+		var lastRow idb.BlockHeaderRow
+		for row := range rows {
+			if row.Error != nil {
+				return row.Error
+			}
+
+			results = append(results, hdrRowToBlock(row))
+			lastRow = row
+		}
+
+		// No next token if there were no results.
+		if len(results) == 0 {
+			return nil
+		}
+
+		// Generate the next token and return
+		var err error
+		nextToken, err = lastRow.Next()
+		return err
+	})
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	return results, nextToken, round, nil
 }
 
 // fetchTransactions is used to query the backend for transactions, and compute the next token
