@@ -1498,7 +1498,7 @@ type AssetsResponse struct {
 
 // BlockHeadersResponse defines model for BlockHeadersResponse.
 type BlockHeadersResponse struct {
-	BlockHeaders []BlockHeader `json:"blocks"`
+	Blocks []BlockHeader `json:"blocks"`
 
 	// CurrentRound Round at which the results were computed.
 	CurrentRound uint64 `json:"current-round"`

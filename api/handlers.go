@@ -1036,7 +1036,7 @@ func (si *ServerImplementation) SearchForBlockHeaders(ctx echo.Context, params g
 	response := generated.BlockHeadersResponse{
 		CurrentRound: round,
 		NextToken:    strPtr(next),
-		BlockHeaders: blockHeaders,
+		Blocks:       blockHeaders,
 	}
 	return ctx.JSON(http.StatusOK, response)
 }
@@ -1070,7 +1070,7 @@ func (si *ServerImplementation) SearchForBlocks(ctx echo.Context, params generat
 	response := generated.BlockHeadersResponse{
 		CurrentRound: round,
 		NextToken:    strPtr(next),
-		BlockHeaders: blockHeaders,
+		Blocks:       blockHeaders,
 	}
 	return ctx.JSON(http.StatusOK, response)
 }
