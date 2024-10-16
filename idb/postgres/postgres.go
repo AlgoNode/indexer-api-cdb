@@ -729,17 +729,17 @@ func buildBlockQuery(bf idb.BlockHeaderFilter) (query string, whereArgs []interf
 	whereParts := make([]string, 0)
 	whereArgs = make([]interface{}, 0)
 	{
-		partNumber := 1
+		var partNumber int
 
 		if bf.MaxRound != nil {
+			partNumber++
 			whereParts = append(whereParts, fmt.Sprintf("round <= $%d", partNumber))
 			whereArgs = append(whereArgs, *bf.MaxRound)
-			partNumber++
 		}
 		if bf.MinRound != nil {
+			partNumber++
 			whereParts = append(whereParts, fmt.Sprintf("round >= $%d", partNumber))
 			whereArgs = append(whereArgs, *bf.MinRound)
-			partNumber++
 		}
 	}
 

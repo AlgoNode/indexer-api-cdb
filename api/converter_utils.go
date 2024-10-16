@@ -859,23 +859,6 @@ func (si *ServerImplementation) transactionParamsToTransactionFilter(params gene
 	return
 }
 
-func (si *ServerImplementation) blockParamsToBlockHeadersFilter(params generated.SearchForBlocksParams) (filter idb.BlockHeaderFilter, err error) {
-
-	p := generated.SearchForBlockHeadersParams{
-		Limit:      params.Limit,
-		Next:       params.Next,
-		MinRound:   params.MinRound,
-		MaxRound:   params.MaxRound,
-		BeforeTime: params.BeforeTime,
-		AfterTime:  params.AfterTime,
-		Proposers:  params.Proposers,
-		Expired:    params.Expired,
-		Absent:     params.Absent,
-	}
-
-	return si.blockHeadersParamsToBlockHeadersFilter(p)
-}
-
 func (si *ServerImplementation) blockHeadersParamsToBlockHeadersFilter(params generated.SearchForBlockHeadersParams) (filter idb.BlockHeaderFilter, err error) {
 
 	var errs []error

@@ -1051,7 +1051,7 @@ func (si *ServerImplementation) SearchForBlocks(ctx echo.Context, params generat
 	}
 
 	// Convert query params into a filter
-	filter, err := si.blockParamsToBlockHeadersFilter(params)
+	filter, err := si.blockHeadersParamsToBlockHeadersFilter((generated.SearchForBlockHeadersParams)(params))
 	if err != nil {
 		return badRequest(ctx, err.Error())
 	}
