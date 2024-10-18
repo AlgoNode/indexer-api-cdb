@@ -1144,6 +1144,9 @@ type TransactionStateProof struct {
 	StateProofType *uint64 `json:"state-proof-type,omitempty"`
 }
 
+// Absent defines model for absent.
+type Absent = []string
+
 // AccountId defines model for account-id.
 type AccountId = string
 
@@ -1183,6 +1186,9 @@ type Exclude = []string
 // ExcludeCloseTo defines model for exclude-close-to.
 type ExcludeCloseTo = bool
 
+// Expired defines model for expired.
+type Expired = []string
+
 // GroupId defines model for group-id.
 type GroupId = string
 
@@ -1206,6 +1212,9 @@ type Next = string
 
 // NotePrefix defines model for note-prefix.
 type NotePrefix = string
+
+// Proposer defines model for proposer.
+type Proposer = []string
 
 // RekeyTo defines model for rekey-to.
 type RekeyTo = bool
@@ -1342,6 +1351,17 @@ type AssetsResponse struct {
 // Definition:
 // data/bookkeeping/block.go : Block
 type BlockResponse = Block
+
+// BlocksResponse defines model for BlocksResponse.
+type BlocksResponse struct {
+	Blocks []Block `json:"blocks"`
+
+	// CurrentRound Round at which the results were computed.
+	CurrentRound uint64 `json:"current-round"`
+
+	// NextToken Used for pagination, when making another request provide this token with the next parameter.
+	NextToken *string `json:"next-token,omitempty"`
+}
 
 // BoxResponse Box name and its content.
 type BoxResponse = Box

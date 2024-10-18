@@ -723,6 +723,107 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 	return
 }
 
+func buildBlockQuery(bf idb.BlockFilter) (query string, whereArgs []interface{}, err error) {
+
+	// Compute the terms in the WHERE clause
+	whereParts := make([]string, 0)
+	whereArgs = make([]interface{}, 0)
+	{
+		var partNumber int
+
+		if bf.MaxRound != nil {
+			partNumber++
+			whereParts = append(whereParts, fmt.Sprintf("round <= $%d", partNumber))
+			whereArgs = append(whereArgs, *bf.MaxRound)
+		}
+		if bf.MinRound != nil {
+			partNumber++
+			whereParts = append(whereParts, fmt.Sprintf("round >= $%d", partNumber))
+			whereArgs = append(whereArgs, *bf.MinRound)
+		}
+		if !bf.AfterTime.IsZero() {
+			partNumber++
+			whereParts = append(
+				whereParts,
+				fmt.Sprintf("round >= (SELECT tmp.round FROM block_header tmp WHERE tmp.realtime > $%d ORDER BY tmp.realtime ASC, tmp.round ASC LIMIT 1)", partNumber),
+			)
+			whereArgs = append(whereArgs, bf.AfterTime)
+		}
+		if !bf.BeforeTime.IsZero() {
+			partNumber++
+			whereParts = append(
+				whereParts,
+				fmt.Sprintf("round <= (SELECT tmp.round FROM block_header tmp WHERE tmp.realtime < $%d ORDER BY tmp.realtime DESC, tmp.round DESC LIMIT 1)", partNumber),
+			)
+			whereArgs = append(whereArgs, bf.BeforeTime)
+		}
+		if len(bf.Proposers) > 0 {
+			var proposersStr []string
+			for addr := range bf.Proposers {
+				proposersStr = append(proposersStr, `'"`+addr.String()+`"'`)
+			}
+			whereParts = append(
+				whereParts,
+				fmt.Sprintf("( (header->'prp') IS NOT NULL AND ((header->'prp')::TEXT IN (%s)) )", strings.Join(proposersStr, ",")),
+			)
+		}
+		if len(bf.ExpiredParticipationAccounts) > 0 {
+			var expiredStr []string
+			for addr := range bf.ExpiredParticipationAccounts {
+				expiredStr = append(expiredStr, `'`+addr.String()+`'`)
+			}
+			whereParts = append(
+				whereParts,
+				fmt.Sprintf("( (header->'partupdrmv') IS NOT NULL AND (header->'partupdrmv') ?| array[%s] )", strings.Join(expiredStr, ",")),
+			)
+		}
+		if len(bf.AbsentParticipationAccounts) > 0 {
+			var absentStr []string
+			for addr := range bf.AbsentParticipationAccounts {
+				absentStr = append(absentStr, `'`+addr.String()+`'`)
+			}
+			whereParts = append(
+				whereParts,
+				fmt.Sprintf("( (header->'partupdabs') IS NOT NULL AND (header->'partupdabs') ?| array[%s] )", strings.Join(absentStr, ",")),
+			)
+		}
+	}
+
+	// SELECT, FROM
+	query = `SELECT header FROM block_header`
+	// WHERE
+	if len(whereParts) > 0 {
+		whereStr := strings.Join(whereParts, " AND ")
+		query += " WHERE " + whereStr
+	}
+	// ORDER BY
+	query += " ORDER BY round ASC"
+	// LIMIT
+	if bf.Limit != 0 {
+		query += fmt.Sprintf(" LIMIT %d", bf.Limit)
+	}
+	return
+}
+
+// This function blocks. `tx` must be non-nil.
+func (db *IndexerDb) yieldBlocks(ctx context.Context, tx pgx.Tx, bf idb.BlockFilter, out chan<- idb.BlockRow) {
+
+	query, whereArgs, err := buildBlockQuery(bf)
+	if err != nil {
+		err = fmt.Errorf("block query err %v", err)
+		out <- idb.BlockRow{Error: err}
+		return
+	}
+
+	rows, err := tx.Query(ctx, query, whereArgs...)
+	if err != nil {
+		err = fmt.Errorf("block query %#v err %v", query, err)
+		out <- idb.BlockRow{Error: err}
+		return
+	}
+	db.yieldBlocksThreadSimple(rows, out)
+}
+
 // This function blocks. `tx` must be non-nil.
 func (db *IndexerDb) yieldTxns(ctx context.Context, tx pgx.Tx, tf idb.TransactionFilter, out chan<- idb.TxnRow) {
 	if len(tf.NextToken) > 0 {
@@ -767,6 +868,42 @@ func txnFilterOptimization(tf idb.TransactionFilter) idb.TransactionFilter {
 		tf.SkipInnerTransactions = true
 	}
 	return tf
+}
+
+// Blocks is part of idb.IndexerDB
+func (db *IndexerDb) Blocks(ctx context.Context, bf idb.BlockFilter) (<-chan idb.BlockRow, uint64) {
+	out := make(chan idb.BlockRow, 1)
+
+	tx, err := db.db.BeginTx(ctx, readonlyRepeatableRead)
+	if err != nil {
+		out <- idb.BlockRow{Error: err}
+		close(out)
+		return out, 0
+	}
+
+	round, err := db.getMaxRoundAccounted(ctx, tx)
+	if err != nil {
+		out <- idb.BlockRow{Error: err}
+		close(out)
+		if rerr := tx.Rollback(ctx); rerr != nil {
+			db.log.Printf("rollback error: %s", rerr)
+		}
+		return out, round
+	}
+
+	go func() {
+		db.yieldBlocks(ctx, tx, bf, out)
+		// Because we return a channel into a "callWithTimeout" function,
+		// We need to make sure that rollback is called before close()
+		// otherwise we can end up with a situation where "callWithTimeout"
+		// will cancel our context, resulting in connection pool churn
+		if rerr := tx.Rollback(ctx); rerr != nil {
+			db.log.Printf("rollback error: %s", rerr)
+		}
+		close(out)
+	}()
+
+	return out, round
 }
 
 // Transactions is part of idb.IndexerDB
@@ -891,6 +1028,30 @@ func (db *IndexerDb) txnsWithNext(ctx context.Context, tx pgx.Tx, tf idb.Transac
 		return
 	}
 	db.yieldTxnsThreadSimple(rows, out, nil, nil)
+}
+
+func (db *IndexerDb) yieldBlocksThreadSimple(rows pgx.Rows, results chan<- idb.BlockRow) {
+	defer rows.Close()
+
+	for rows.Next() {
+		var row idb.BlockRow
+
+		var blockheaderjson []byte
+		err := rows.Scan(&blockheaderjson)
+		if err != nil {
+			row.Error = err
+		} else {
+			row.BlockHeader, err = encoding.DecodeBlockHeader(blockheaderjson)
+			if err != nil {
+				row.Error = fmt.Errorf("failed to decode block header: %w", err)
+			}
+		}
+
+		results <- row
+	}
+	if err := rows.Err(); err != nil {
+		results <- idb.BlockRow{Error: err}
+	}
 }
 
 func (db *IndexerDb) yieldTxnsThreadSimple(rows pgx.Rows, results chan<- idb.TxnRow, countp *int, errp *error) {

@@ -853,6 +853,61 @@
         }
       }
     },
+    "/v2/blocks": {
+      "get": {
+        "description": "Search for blocks. Blocks are returned in ascending round order. Transactions are not included in the output.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "search"
+        ],
+        "operationId": "searchForBlocks",
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/next"
+          },
+          {
+            "$ref": "#/parameters/min-round"
+          },
+          {
+            "$ref": "#/parameters/max-round"
+          },
+          {
+            "$ref": "#/parameters/before-time"
+          },
+          {
+            "$ref": "#/parameters/after-time"
+          },
+          {
+            "$ref": "#/parameters/proposer"
+          },
+          {
+            "$ref": "#/parameters/expired"
+          },
+          {
+            "$ref": "#/parameters/absent"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/BlocksResponse"
+          },
+          "404": {
+            "$ref": "#/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/responses/ErrorResponse"
+          }
+        }
+      }
+    },
     "/v2/blocks/{round-number}": {
       "get": {
         "description": "Lookup block.",
@@ -2680,6 +2735,39 @@
     }
   },
   "parameters": {
+    "absent": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-algorand-format": "Address"
+      },
+      "description": "Absent participation accounts. Comma separated list of addresses.",
+      "name": "absent",
+      "in": "query",
+      "required": false
+    },
+    "expired": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-algorand-format": "Address"
+      },
+      "description": "Expired participation accounts. Comma separated list of addresses.",
+      "name": "expired",
+      "in": "query",
+      "required": false
+    },
+    "proposer": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-algorand-format": "Address"
+      },
+      "description": "Block proposer. Comma separated list of addresses.",
+      "name": "proposer",
+      "in": "query",
+      "required": false
+    },
     "account-id": {
       "type": "string",
       "description": "account string",
@@ -3187,6 +3275,32 @@
       "description": "(empty)",
       "schema": {
         "$ref": "#/definitions/Block"
+      }
+    },
+    "BlocksResponse": {
+      "description": "(empty)",
+      "schema": {
+        "type": "object",
+        "required": [
+          "current-round",
+          "blocks"
+        ],
+        "properties": {
+          "current-round": {
+            "description": "Round at which the results were computed.",
+            "type": "integer"
+          },
+          "next-token": {
+            "description": "Used for pagination, when making another request provide this token with the next parameter.",
+            "type": "string"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Block"
+            }
+          }
+        }
       }
     },
     "HealthCheckResponse": {

@@ -1232,6 +1232,9 @@ type TransactionStateProof struct {
 	StateProofType *uint64 `json:"state-proof-type,omitempty"`
 }
 
+// Absent defines model for absent.
+type Absent = []string
+
 // AccountId defines model for account-id.
 type AccountId = string
 
@@ -1271,6 +1274,9 @@ type Exclude = []string
 // ExcludeCloseTo defines model for exclude-close-to.
 type ExcludeCloseTo = bool
 
+// Expired defines model for expired.
+type Expired = []string
+
 // GroupId defines model for group-id.
 type GroupId = string
 
@@ -1294,6 +1300,9 @@ type Next = string
 
 // NotePrefix defines model for note-prefix.
 type NotePrefix = string
+
+// Proposer defines model for proposer.
+type Proposer = []string
 
 // RekeyTo defines model for rekey-to.
 type RekeyTo = bool
@@ -1430,6 +1439,17 @@ type AssetsResponse struct {
 // Definition:
 // data/bookkeeping/block.go : Block
 type BlockResponse = Block
+
+// BlocksResponse defines model for BlocksResponse.
+type BlocksResponse struct {
+	Blocks []Block `json:"blocks"`
+
+	// CurrentRound Round at which the results were computed.
+	CurrentRound uint64 `json:"current-round"`
+
+	// NextToken Used for pagination, when making another request provide this token with the next parameter.
+	NextToken *string `json:"next-token,omitempty"`
+}
 
 // BoxResponse Box name and its content.
 type BoxResponse = Box
@@ -1813,6 +1833,36 @@ type LookupAssetTransactionsParamsSigType string
 
 // LookupAssetTransactionsParamsAddressRole defines parameters for LookupAssetTransactions.
 type LookupAssetTransactionsParamsAddressRole string
+
+// SearchForBlocksParams defines parameters for SearchForBlocks.
+type SearchForBlocksParams struct {
+	// Limit Maximum number of results to return. There could be additional pages even if the limit is not reached.
+	Limit *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Next The next page of results. Use the next token provided by the previous results.
+	Next *string `form:"next,omitempty" json:"next,omitempty"`
+
+	// MinRound Include results at or after the specified min-round.
+	MinRound *uint64 `form:"min-round,omitempty" json:"min-round,omitempty"`
+
+	// MaxRound Include results at or before the specified max-round.
+	MaxRound *uint64 `form:"max-round,omitempty" json:"max-round,omitempty"`
+
+	// BeforeTime Include results before the given time. Must be an RFC 3339 formatted string.
+	BeforeTime *time.Time `form:"before-time,omitempty" json:"before-time,omitempty"`
+
+	// AfterTime Include results after the given time. Must be an RFC 3339 formatted string.
+	AfterTime *time.Time `form:"after-time,omitempty" json:"after-time,omitempty"`
+
+	// Proposer Block proposer. Comma separated list of addresses.
+	Proposer *[]string `form:"proposer,omitempty" json:"proposer,omitempty"`
+
+	// Expired Expired participation accounts. Comma separated list of addresses.
+	Expired *[]string `form:"expired,omitempty" json:"expired,omitempty"`
+
+	// Absent Absent participation accounts. Comma separated list of addresses.
+	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
+}
 
 // LookupBlockParams defines parameters for LookupBlock.
 type LookupBlockParams struct {
