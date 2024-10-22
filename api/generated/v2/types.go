@@ -1363,6 +1363,9 @@ type Next = string
 // NotePrefix defines model for note-prefix.
 type NotePrefix = string
 
+// Participation defines model for participation.
+type Participation = []string
+
 // Proposers defines model for proposers.
 type Proposers = []string
 
@@ -1386,6 +1389,9 @@ type TxType string
 
 // Txid defines model for txid.
 type Txid = string
+
+// Updates defines model for updates.
+type Updates = []string
 
 // AccountResponse defines model for AccountResponse.
 type AccountResponse struct {
@@ -1924,6 +1930,12 @@ type SearchForBlockHeadersParams struct {
 
 	// Absent Accounts marked as absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
+
+	// Updates Expired or absent participation accounts. Comma separated list of addresses.
+	Updates *[]string `form:"updates,omitempty" json:"updates,omitempty"`
+
+	// Participation Proposer, expired or absent participation accounts. Comma separated list of addresses.
+	Participation *[]string `form:"participation,omitempty" json:"participation,omitempty"`
 }
 
 // SearchForBlocksParams defines parameters for SearchForBlocks.
@@ -1954,6 +1966,12 @@ type SearchForBlocksParams struct {
 
 	// Absent Accounts marked as absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
+
+	// Updates Expired or absent participation accounts. Comma separated list of addresses.
+	Updates *[]string `form:"updates,omitempty" json:"updates,omitempty"`
+
+	// Participation Proposer, expired or absent participation accounts. Comma separated list of addresses.
+	Participation *[]string `form:"participation,omitempty" json:"participation,omitempty"`
 }
 
 // LookupBlockParams defines parameters for LookupBlock.
