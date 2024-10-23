@@ -232,7 +232,7 @@
         "x-algorand-format": "base64"
       },
       "participation": {
-        "description": "Proposer, expired or absent participation accounts. Comma separated list of addresses.",
+        "description": "Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
         "explode": false,
         "in": "query",
         "name": "participation",
@@ -332,7 +332,7 @@
         }
       },
       "updates": {
-        "description": "Expired or absent participation accounts. Comma separated list of addresses.",
+        "description": "Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
         "explode": false,
         "in": "query",
         "name": "updates",
@@ -5073,7 +5073,7 @@
             "style": "form"
           },
           {
-            "description": "Expired or absent participation accounts. Comma separated list of addresses.",
+            "description": "Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
             "explode": false,
             "in": "query",
             "name": "updates",
@@ -5087,7 +5087,7 @@
             "style": "form"
           },
           {
-            "description": "Proposer, expired or absent participation accounts. Comma separated list of addresses.",
+            "description": "Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
             "explode": false,
             "in": "query",
             "name": "participation",
@@ -5284,7 +5284,7 @@
             "style": "form"
           },
           {
-            "description": "Expired or absent participation accounts. Comma separated list of addresses.",
+            "description": "Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
             "explode": false,
             "in": "query",
             "name": "updates",
@@ -5298,7 +5298,7 @@
             "style": "form"
           },
           {
-            "description": "Proposer, expired or absent participation accounts. Comma separated list of addresses.",
+            "description": "Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.",
             "explode": false,
             "in": "query",
             "name": "participation",

@@ -1931,10 +1931,10 @@ type SearchForBlockHeadersParams struct {
 	// Absent Accounts marked as absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
 
-	// Updates Expired or absent participation accounts. Comma separated list of addresses.
+	// Updates Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Updates *[]string `form:"updates,omitempty" json:"updates,omitempty"`
 
-	// Participation Proposer, expired or absent participation accounts. Comma separated list of addresses.
+	// Participation Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Participation *[]string `form:"participation,omitempty" json:"participation,omitempty"`
 }
 
@@ -1967,10 +1967,10 @@ type SearchForBlocksParams struct {
 	// Absent Accounts marked as absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
 
-	// Updates Expired or absent participation accounts. Comma separated list of addresses.
+	// Updates Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Updates *[]string `form:"updates,omitempty" json:"updates,omitempty"`
 
-	// Participation Proposer, expired or absent participation accounts. Comma separated list of addresses.
+	// Participation Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Participation *[]string `form:"participation,omitempty" json:"participation,omitempty"`
 }
 
