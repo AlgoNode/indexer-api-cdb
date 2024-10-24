@@ -630,6 +630,49 @@
         "description": "(empty)"
       },
       "BlockHeadersResponse": {
+<<<<<<< HEAD
+=======
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "blocks": {
+                  "items": {
+                    "$ref": "#/components/schemas/BlockHeader"
+                  },
+                  "type": "array"
+                },
+                "current-round": {
+                  "description": "Round at which the results were computed.",
+                  "type": "integer"
+                },
+                "next-token": {
+                  "description": "Used for pagination, when making another request provide this token with the next parameter.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "blocks",
+                "current-round"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "(empty)"
+      },
+      "BlockResponse": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Block"
+            }
+          }
+        },
+        "description": "(empty)"
+      },
+      "BlocksResponse": {
+>>>>>>> b14b33e (Fix swagger docs for `GET /v2/blocks`)
         "content": {
           "application/json": {
             "schema": {
