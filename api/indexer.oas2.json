@@ -86,6 +86,9 @@
           },
           {
             "$ref": "#/parameters/application-id"
+          },
+          {
+            "$ref": "#/parameters/online-only"
           }
         ],
         "responses": {
@@ -3172,6 +3175,12 @@
       "name": "note-prefix",
       "in": "query",
       "x-algorand-format": "base64"
+    },
+    "online-only": {
+      "type": "boolean",
+      "description": "When this is set to true, return only accounts whose participation status is currently online.",
+      "name": "online-only",
+      "in": "query"
     },
     "rekey-to": {
       "type": "boolean",
