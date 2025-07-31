@@ -309,7 +309,9 @@ func runDaemon(daemonConfig *daemonConfig) error {
 // makeOptions converts CLI options to server options
 func makeOptions(daemonConfig *daemonConfig) (options api.ExtraOptions) {
 	options.EnablePrivateNetworkAccessHeader = daemonConfig.enablePrivateNetworkAccessHeader
+
 	options.DeveloperMode = daemonConfig.developerMode
+
 	if daemonConfig.tokenString != "" {
 		options.Tokens = append(options.Tokens, daemonConfig.tokenString)
 	}
