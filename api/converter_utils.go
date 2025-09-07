@@ -1013,7 +1013,7 @@ func (si *ServerImplementation) blockParamsToBlockFilter(params generated.Search
 	{
 		// Make sure at most one of the participation parameters is set
 		numParticipationFilters := 0
-		if params.Proposers != nil || params.Proposers != nil {
+		if params.Proposers != nil {
 			numParticipationFilters++
 		}
 		if params.Expired != nil {
@@ -1056,16 +1056,6 @@ func (si *ServerImplementation) blockParamsToBlockFilter(params generated.Search
 				addr, err := sdk.DecodeAddress(s)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("unable to parse proposers address `%s`: %w", s, err))
-				} else {
-					filter.Proposers[addr] = struct{}{}
-				}
-			}
-		}
-		if params.Proposers != nil {
-			for _, s := range *params.Proposers {
-				addr, err := sdk.DecodeAddress(s)
-				if err != nil {
-					errs = append(errs, fmt.Errorf("unable to parse proposer address `%s`: %w", s, err))
 				} else {
 					filter.Proposers[addr] = struct{}{}
 				}
