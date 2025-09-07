@@ -90,6 +90,12 @@ func TestTransactionParamToTransactionFilter(t *testing.T) {
 			[]string{errUnknownSigType, errUnknownTxType},
 		},
 		{
+			"Valid MSig type",
+			generated.SearchForTransactionsParams{SigType: (*generated.SearchForTransactionsParamsSigType)(strPtr("msig"))},
+			idb.TransactionFilter{SigType: "msig", Limit: defaultOpts.DefaultTransactionsLimit},
+			nil,
+		},
+		{
 			"As many fields as possible",
 			generated.SearchForTransactionsParams{
 				Limit:               uint64Ptr(defaultOpts.DefaultTransactionsLimit + 1),
@@ -517,6 +523,15 @@ func TestFetchTransactions(t *testing.T) {
 			created: 10,
 		},
 		{
+			name: "App Call with Boxes and Reject Version Txn",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/app_call_box_create.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/app_call_box_create.response"),
+			},
+		},
+		{
 			name: "Application Clear",
 			txnBytes: [][]byte{
 				loadResourceFileOrPanic("test_resources/app_clear.txn"),
@@ -651,6 +666,78 @@ func TestFetchTransactions(t *testing.T) {
 			},
 			response: []generated.Transaction{
 				loadTransactionFromFile("test_resources/heartbeat.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Direct Address",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_address.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_address.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Direct App",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_app.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_app.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Direct Asset",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_asset.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_asset.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Asset Holding",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_holding.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_holding.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Local State",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_local.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_local.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Box Reference",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_box.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_box.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Multiple Types",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_multiple.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_multiple.response"),
+			},
+		},
+		{
+			name: "Application txnAccess - Empty Access Array",
+			txnBytes: [][]byte{
+				loadResourceFileOrPanic("test_resources/txnaccess_empty.txn"),
+			},
+			response: []generated.Transaction{
+				loadTransactionFromFile("test_resources/txnaccess_empty.response"),
 			},
 		},
 	}
@@ -806,6 +893,69 @@ func TestLookupApplicationLogsByID(t *testing.T) {
 
 	params := generated.LookupApplicationLogsByIDParams{}
 	err = si.LookupApplicationLogsByID(c, 444, params)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response generated.ApplicationLogsResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(appIdx), response.ApplicationId)
+	assert.NotNil(t, response.LogData)
+	ld := *response.LogData
+	assert.Equal(t, 1, len(ld))
+	assert.Equal(t, sdkcrypto.TransactionIDString(stxn.Txn), ld[0].Txid)
+	assert.Equal(t, len(stxn.ApplyData.EvalDelta.Logs), len(ld[0].Logs))
+	for i, log := range ld[0].Logs {
+		assert.Equal(t, []byte(stxn.ApplyData.EvalDelta.Logs[i]), log)
+	}
+}
+
+func TestLookupApplicationLogsByIDWithLimit(t *testing.T) {
+	mockIndexer := &mocks.IndexerDb{}
+	si := testServerImplementation(mockIndexer)
+	si.EnableAddressSearchRoundRewind = true
+
+	txnBytes := loadResourceFileOrPanic("test_resources/app_call_logs.txn")
+	var stxn sdk.SignedTxnWithAD
+	err := msgpack.Decode(txnBytes, &stxn)
+	assert.NoError(t, err)
+
+	roundTime := time.Now()
+	ch := make(chan idb.TxnRow, 1)
+	ch <- idb.TxnRow{
+		Round:     1,
+		Intra:     2,
+		RoundTime: roundTime,
+		Txn:       &stxn,
+		AssetID:   0,
+		Extra: idb.TxnExtra{
+			AssetCloseAmount: 0,
+		},
+		Error: nil,
+	}
+
+	close(ch)
+	var outCh <-chan idb.TxnRow = ch
+	var round uint64 = 1
+
+	// Verify that the filter has RequireApplicationLogs set to true
+	mockIndexer.On("Transactions", mock.Anything, mock.MatchedBy(func(filter idb.TransactionFilter) bool {
+		return filter.RequireApplicationLogs == true && filter.Limit == 1
+	})).Return(outCh, round)
+
+	appIdx := stxn.Txn.ApplicationID
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/v2/applications/:appIdx/logs")
+	c.SetParamNames("appIdx")
+	c.SetParamValues(fmt.Sprintf("%d", appIdx))
+
+	// Test with limit=1
+	params := generated.LookupApplicationLogsByIDParams{Limit: uint64Ptr(1)}
+	err = si.LookupApplicationLogsByID(c, uint64(appIdx), params)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -1053,6 +1203,64 @@ func TestApplicationLimits(t *testing.T) {
 	}
 }
 
+func TestBoxLimits(t *testing.T) {
+	testcases := []struct {
+		name     string
+		limit    *uint64
+		expected uint64
+	}{
+		{
+			name:     "Default",
+			limit:    nil,
+			expected: defaultOpts.DefaultBoxesLimit,
+		},
+		{
+			name:     "Max",
+			limit:    uint64Ptr(math.MaxUint64),
+			expected: defaultOpts.MaxBoxesLimit,
+		},
+		{
+			name:     "Within bounds",
+			limit:    uint64Ptr(500),
+			expected: 500,
+		},
+	}
+
+	for _, tc := range testcases {
+
+		// Mock backend to capture default limits
+		mockIndexer := &mocks.IndexerDb{}
+		si := testServerImplementation(mockIndexer)
+		si.timeout = 5 * time.Millisecond
+
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup context...
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec1 := httptest.NewRecorder()
+			c := e.NewContext(req, rec1)
+
+			// check parameters passed to the backend
+			ch := make(chan idb.ApplicationBoxRow)
+			close(ch) // Close immediately so fetchApplicationBoxes returns no results
+			mockIndexer.
+				On("ApplicationBoxes", mock.Anything, mock.Anything).
+				Return((<-chan idb.ApplicationBoxRow)(ch), uint64(0)).
+				Run(func(args mock.Arguments) {
+					require.Len(t, args, 2)
+					require.IsType(t, idb.ApplicationBoxQuery{}, args[1])
+					params := args[1].(idb.ApplicationBoxQuery)
+					require.Equal(t, params.Limit, tc.expected)
+				})
+
+			err := si.SearchForApplicationBoxes(c, uint64(1), generated.SearchForApplicationBoxesParams{
+				Limit: tc.limit,
+			})
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestBigNumbers(t *testing.T) {
 
 	testcases := []struct {
@@ -1266,6 +1474,12 @@ func TestFetchBlock(t *testing.T) {
 			blockBytes:   loadResourceFileOrPanic("test_resources/proposer_incentives_block.block"),
 			blockOptions: idb.GetBlockOptions{Transactions: true},
 			expected:     loadBlockFromFile("test_resources/proposer_incentives_block_response.json"),
+		},
+		{
+			name:         "Block with SHA-512 Hash and Transaction Commitment",
+			blockBytes:   loadResourceFileOrPanic("test_resources/branch512_block.block"),
+			blockOptions: idb.GetBlockOptions{Transactions: true},
+			expected:     loadBlockFromFile("test_resources/branch512_block_response.json"),
 		},
 	}
 

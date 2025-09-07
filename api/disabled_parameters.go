@@ -192,7 +192,7 @@ func MakeDisabledMapConfigFromFile(swag *openapi3.T, filePath string) (*Disabled
 func MakeDisplayDisabledMapFromConfig(swag *openapi3.T, mapConfig *DisabledMapConfig, limited bool) *DisplayDisabledMap {
 
 	rval := makeDisplayDisabledMap()
-	for restPath, item := range swag.Paths {
+	for restPath, item := range swag.Paths.Map() {
 
 		for opName, opItem := range item.Operations() {
 
@@ -321,7 +321,7 @@ func GetDefaultDisabledMapConfigForPostgres() *DisabledMapConfig {
 	get("/v2/accounts/{account-id}/transactions", []string{"note-prefix", "tx-type", "sig-type", "asset-id", "before-time", "after-time", "rekey-to"})
 	get("/v2/assets", []string{"name", "unit"})
 	get("/v2/assets/{asset-id}/balances", []string{"currency-greater-than", "currency-less-than"})
-	get("/v2/transactions", []string{"note-prefix", "tx-type", "sig-type", "asset-id", "before-time", "after-time", "currency-greater-than", "currency-less-than", "address-role", "exclude-close-to", "rekey-to", "application-id"})
+	get("/v2/transactions", []string{"note-prefix", "tx-type", "sig-type", "asset-id", "before-time", "after-time", "currency-greater-than", "currency-less-than", "address-role", "exclude-close-to", "rekey-to", "application-id", "group-id"})
 	get("/v2/assets/{asset-id}/transactions", []string{"note-prefix", "tx-type", "sig-type", "asset-id", "before-time", "after-time", "currency-greater-than", "currency-less-than", "address-role", "exclude-close-to", "rekey-to"})
 
 	return rval
@@ -366,7 +366,7 @@ func (dmc *DisabledMapConfig) validate(swag *openapi3.T) error {
 	potentialRval := makeErrDisabledMapConfig()
 
 	for recordedPath, recordedOp := range dmc.Data {
-		swagPath, exists := swag.Paths[recordedPath]
+		swagPath, exists := swag.Paths.Map()[recordedPath]
 		if !exists {
 			// This means that the rest endpoint itself is mis-spelled
 			potentialRval.BadEntries[recordedPath] = map[string][]string{}
@@ -422,7 +422,7 @@ func MakeDisabledMapFromOA3(swag *openapi3.T, config *DisabledMapConfig) (*Disab
 	}
 
 	rval := MakeDisabledMap()
-	for restPath, item := range swag.Paths {
+	for restPath, item := range swag.Paths.Map() {
 		for opName, opItem := range item.Operations() {
 
 			endpointConfig := makeEndpointConfig()

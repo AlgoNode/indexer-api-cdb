@@ -378,6 +378,9 @@ type ApplicationParams struct {
 
 	// LocalStateSchema Specifies maximums on the number of each type that may be stored.
 	LocalStateSchema *ApplicationStateSchema `json:"local-state-schema,omitempty"`
+
+	// Version the number of updates to the application programs
+	Version *uint64 `json:"version,omitempty"`
 }
 
 // ApplicationStateSchema Specifies maximums on the number of each type that may be stored.
@@ -512,6 +515,9 @@ type Block struct {
 	// PreviousBlockHash \[prev\] Previous block hash.
 	PreviousBlockHash []byte `json:"previous-block-hash"`
 
+	// PreviousBlockHash512 \[prev512\] Previous block hash, using SHA-512.
+	PreviousBlockHash512 *[]byte `json:"previous-block-hash-512,omitempty"`
+
 	// Proposer the proposer of this block.
 	Proposer *string `json:"proposer,omitempty"`
 
@@ -542,67 +548,8 @@ type Block struct {
 	// TransactionsRootSha256 \[txn256\] TransactionsRootSHA256 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA256 hash function instead of the default SHA512_256. This commitment can be used on environments where only the SHA256 function exists.
 	TransactionsRootSha256 []byte `json:"transactions-root-sha256"`
 
-	// TxnCounter \[tc\] TxnCounter counts the number of transactions committed in the ledger, from the time at which support for this feature was introduced.
-	//
-	// Specifically, TxnCounter is the number of the next transaction that will be committed after this block.  It is 0 when no transactions have ever been committed (since TxnCounter started being supported).
-	TxnCounter *uint64 `json:"txn-counter,omitempty"`
-
-	// UpgradeState Fields relating to a protocol upgrade.
-	UpgradeState *BlockUpgradeState `json:"upgrade-state,omitempty"`
-
-	// UpgradeVote Fields relating to voting for a protocol upgrade.
-	UpgradeVote *BlockUpgradeVote `json:"upgrade-vote,omitempty"`
-}
-
-// BlockHeader Block information. Does not include transactions.
-//
-// Definition:
-// data/bookkeeping/block.go : Block
-type BlockHeader struct {
-	// Bonus the potential bonus payout for this block.
-	Bonus *uint64 `json:"bonus,omitempty"`
-
-	// FeesCollected the sum of all fees paid by transactions in this block.
-	FeesCollected *uint64 `json:"fees-collected,omitempty"`
-
-	// GenesisHash \[gh\] hash to which this block belongs.
-	GenesisHash []byte `json:"genesis-hash"`
-
-	// GenesisId \[gen\] ID to which this block belongs.
-	GenesisId string `json:"genesis-id"`
-
-	// ParticipationUpdates Participation account data that needs to be checked/acted on by the network.
-	ParticipationUpdates *ParticipationUpdates `json:"participation-updates,omitempty"`
-
-	// PreviousBlockHash \[prev\] Previous block hash.
-	PreviousBlockHash []byte `json:"previous-block-hash"`
-
-	// Proposer the proposer of this block.
-	Proposer *string `json:"proposer,omitempty"`
-
-	// ProposerPayout the actual amount transferred to the proposer from the fee sink.
-	ProposerPayout *uint64 `json:"proposer-payout,omitempty"`
-
-	// Rewards Fields relating to rewards,
-	Rewards *BlockRewards `json:"rewards,omitempty"`
-
-	// Round \[rnd\] Current round on which this block was appended to the chain.
-	Round uint64 `json:"round"`
-
-	// Seed \[seed\] Sortition seed.
-	Seed []byte `json:"seed"`
-
-	// StateProofTracking Tracks the status of state proofs.
-	StateProofTracking *[]StateProofTracking `json:"state-proof-tracking,omitempty"`
-
-	// Timestamp \[ts\] Block creation timestamp in seconds since eposh
-	Timestamp uint64 `json:"timestamp"`
-
-	// TransactionsRoot \[txn\] TransactionsRoot authenticates the set of transactions appearing in the block. More specifically, it's the root of a merkle tree whose leaves are the block's Txids, in lexicographic order. For the empty block, it's 0. Note that the TxnRoot does not authenticate the signatures on the transactions, only the transactions themselves. Two blocks with the same transactions but in a different order and with different signatures will have the same TxnRoot.
-	TransactionsRoot []byte `json:"transactions-root"`
-
-	// TransactionsRootSha256 \[txn256\] TransactionsRootSHA256 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA256 hash function instead of the default SHA512_256. This commitment can be used on environments where only the SHA256 function exists.
-	TransactionsRootSha256 []byte `json:"transactions-root-sha256"`
+	// TransactionsRootSha512 \[txn512\] TransactionsRootSHA512 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA512 hash function instead of the default SHA512_256.
+	TransactionsRootSha512 *[]byte `json:"transactions-root-sha512,omitempty"`
 
 	// TxnCounter \[tc\] TxnCounter counts the number of transactions committed in the ledger, from the time at which support for this feature was introduced.
 	//
@@ -685,6 +632,15 @@ type BoxDescriptor struct {
 	Name []byte `json:"name"`
 }
 
+// BoxReference BoxReference names a box by its name and the application ID it belongs to.
+type BoxReference struct {
+	// App Application ID to which the box belongs, or zero if referring to the called application.
+	App uint64 `json:"app"`
+
+	// Name Base64 encoded box name
+	Name []byte `json:"name"`
+}
+
 // EvalDelta Represents a TEAL value delta.
 type EvalDelta struct {
 	// Action \[at\] delta action.
@@ -747,6 +703,15 @@ type HealthCheck struct {
 	Version string `json:"version"`
 }
 
+// HoldingRef HoldingRef names a holding by referring to an Address and Asset it belongs to.
+type HoldingRef struct {
+	// Address \[d\] Address in access list, or the sender of the transaction.
+	Address string `json:"address"`
+
+	// Asset \[s\] Asset ID for asset in access list.
+	Asset uint64 `json:"asset"`
+}
+
 // IndexerStateProofMessage defines model for IndexerStateProofMessage.
 type IndexerStateProofMessage struct {
 	// BlockHeadersCommitment \[b\]
@@ -763,6 +728,15 @@ type IndexerStateProofMessage struct {
 
 	// VotersCommitment \[v\]
 	VotersCommitment *[]byte `json:"voters-commitment,omitempty"`
+}
+
+// LocalsRef LocalsRef names a local state by referring to an Address and App it belongs to.
+type LocalsRef struct {
+	// Address \[d\] Address in access list, or the sender of the transaction.
+	Address string `json:"address"`
+
+	// App \[p\] Application ID for app in access list, or zero if referring to the called application.
+	App uint64 `json:"app"`
 }
 
 // MerkleArrayProof defines model for MerkleArrayProof.
@@ -811,6 +785,29 @@ type ParticipationUpdates struct {
 
 	// ExpiredParticipationAccounts \[partupdrmv\] a list of online accounts that needs to be converted to offline since their participation key expired.
 	ExpiredParticipationAccounts *[]string `json:"expired-participation-accounts,omitempty"`
+}
+
+// ResourceRef ResourceRef names a single resource. Only one of the fields should be set.
+type ResourceRef struct {
+	// Address \[d\] Account whose balance record is accessible by the executing ApprovalProgram or ClearStateProgram.
+	Address *string `json:"address,omitempty"`
+
+	// ApplicationId \[p\] Application id whose GlobalState may be read by the executing
+	//  ApprovalProgram or ClearStateProgram.
+	ApplicationId *uint64 `json:"application-id,omitempty"`
+
+	// AssetId \[s\] Asset whose AssetParams may be read by the executing
+	//  ApprovalProgram or ClearStateProgram.
+	AssetId *uint64 `json:"asset-id,omitempty"`
+
+	// Box BoxReference names a box by its name and the application ID it belongs to.
+	Box *BoxReference `json:"box,omitempty"`
+
+	// Holding HoldingRef names a holding by referring to an Address and Asset it belongs to.
+	Holding *HoldingRef `json:"holding,omitempty"`
+
+	// Local LocalsRef names a local state by referring to an Address and App it belongs to.
+	Local *LocalsRef `json:"local,omitempty"`
 }
 
 // StateDelta Application state delta.
@@ -1098,6 +1095,9 @@ type TransactionTxType string
 // Definition:
 // data/transactions/application.go : ApplicationCallTxnFields
 type TransactionApplication struct {
+	// Access \[al\] Access unifies `accounts`, `foreign-apps`, `foreign-assets`, and `box-references` under a single list. If access is non-empty, these lists must be empty. If access is empty, those lists may be non-empty.
+	Access *[]ResourceRef `json:"access,omitempty"`
+
 	// Accounts \[apat\] List of accounts in addition to the sender that may be accessed from the application's approval-program and clear-state-program.
 	Accounts *[]string `json:"accounts,omitempty"`
 
@@ -1109,6 +1109,9 @@ type TransactionApplication struct {
 
 	// ApprovalProgram \[apap\] Logic executed for every application transaction, except when on-completion is set to "clear". It can read and write global state for the application, as well as account-specific local state. Approval programs may reject the transaction.
 	ApprovalProgram *[]byte `json:"approval-program,omitempty"`
+
+	// BoxReferences \[apbx\] the boxes that can be accessed by this transaction (and others in the same group).
+	BoxReferences *[]BoxReference `json:"box-references,omitempty"`
 
 	// ClearStateProgram \[apsu\] Logic executed for application transactions with on-completion set to "clear". It can read and write global state for the application, as well as account-specific local state. Clear state programs cannot reject the transaction.
 	ClearStateProgram *[]byte `json:"clear-state-program,omitempty"`
@@ -1139,6 +1142,9 @@ type TransactionApplication struct {
 	// * update
 	// * delete
 	OnCompletion OnCompletion `json:"on-completion"`
+
+	// RejectVersion \[aprv\] the lowest application version for which this transaction should immediately fail. 0 indicates that no version check should be performed.
+	RejectVersion *uint64 `json:"reject-version,omitempty"`
 }
 
 // TransactionAssetConfig Fields for asset allocation, re-configuration, and destruction.
@@ -1274,7 +1280,7 @@ type TransactionSignature struct {
 	// data/transactions/logicsig.go
 	Logicsig *TransactionSignatureLogicsig `json:"logicsig,omitempty"`
 
-	// Multisig \[msig\] structure holding multiple subsignatures.
+	// Multisig structure holding multiple subsignatures.
 	//
 	// Definition:
 	// crypto/multisig.go : MultisigSig
@@ -1295,7 +1301,13 @@ type TransactionSignatureLogicsig struct {
 	// Logic \[l\] Program signed by a signature or multi signature, or hashed to be the address of ana ccount. Base64 encoded TEAL program.
 	Logic []byte `json:"logic"`
 
-	// MultisigSignature \[msig\] structure holding multiple subsignatures.
+	// LogicMultisigSignature structure holding multiple subsignatures.
+	//
+	// Definition:
+	// crypto/multisig.go : MultisigSig
+	LogicMultisigSignature *TransactionSignatureMultisig `json:"logic-multisig-signature,omitempty"`
+
+	// MultisigSignature structure holding multiple subsignatures.
 	//
 	// Definition:
 	// crypto/multisig.go : MultisigSig
@@ -1305,7 +1317,7 @@ type TransactionSignatureLogicsig struct {
 	Signature *[]byte `json:"signature,omitempty"`
 }
 
-// TransactionSignatureMultisig \[msig\] structure holding multiple subsignatures.
+// TransactionSignatureMultisig structure holding multiple subsignatures.
 //
 // Definition:
 // crypto/multisig.go : MultisigSig
@@ -1418,12 +1430,6 @@ type NotePrefix = string
 // OnlineOnly defines model for online-only.
 type OnlineOnly = bool
 
-// Participation defines model for participation.
-type Participation = []string
-
-// Proposer defines model for proposer.
-type Proposer = []string
-
 // Proposers defines model for proposers.
 type Proposers = []string
 
@@ -1447,9 +1453,6 @@ type TxType string
 
 // Txid defines model for txid.
 type Txid = string
-
-// Updates defines model for updates.
-type Updates = []string
 
 // AccountResponse defines model for AccountResponse.
 type AccountResponse struct {
@@ -1562,7 +1565,7 @@ type AssetsResponse struct {
 
 // BlockHeadersResponse defines model for BlockHeadersResponse.
 type BlockHeadersResponse struct {
-	Blocks []BlockHeader `json:"blocks"`
+	Blocks []Block `json:"blocks"`
 
 	// CurrentRound Round at which the results were computed.
 	CurrentRound uint64 `json:"current-round"`
@@ -1576,17 +1579,6 @@ type BlockHeadersResponse struct {
 // Definition:
 // data/bookkeeping/block.go : Block
 type BlockResponse = Block
-
-// BlocksResponse defines model for BlocksResponse.
-type BlocksResponse struct {
-	Blocks []Block `json:"blocks"`
-
-	// CurrentRound Round at which the results were computed.
-	CurrentRound uint64 `json:"current-round"`
-
-	// NextToken Used for pagination, when making another request provide this token with the next parameter.
-	NextToken *string `json:"next-token,omitempty"`
-}
 
 // BoxResponse Box name and its content.
 type BoxResponse = Box
@@ -1994,48 +1986,6 @@ type SearchForBlockHeadersParams struct {
 	// AfterTime Include results after the given time. Must be an RFC 3339 formatted string.
 	AfterTime *time.Time `form:"after-time,omitempty" json:"after-time,omitempty"`
 
-	// Proposer This parameter is an alias to the `proposers` parameter, it exposes the exact same functionality.
-	Proposer *[]string `form:"proposer,omitempty" json:"proposer,omitempty"`
-
-	// Proposers Accounts marked as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.
-	Proposers *[]string `form:"proposers,omitempty" json:"proposers,omitempty"`
-
-	// Expired Accounts marked as expired in the block header's participation updates. This parameter accepts a comma separated list of addresses.
-	Expired *[]string `form:"expired,omitempty" json:"expired,omitempty"`
-
-	// Absent Accounts marked as absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
-	Absent *[]string `form:"absent,omitempty" json:"absent,omitempty"`
-
-	// Updates Accounts marked as expired or absent in the block header's participation updates. This parameter accepts a comma separated list of addresses.
-	Updates *[]string `form:"updates,omitempty" json:"updates,omitempty"`
-
-	// Participation Accounts marked as expired, absent or as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.
-	Participation *[]string `form:"participation,omitempty" json:"participation,omitempty"`
-}
-
-// SearchForBlocksParams defines parameters for SearchForBlocks.
-type SearchForBlocksParams struct {
-	// Limit Maximum number of results to return. There could be additional pages even if the limit is not reached.
-	Limit *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// Next The next page of results. Use the next token provided by the previous results.
-	Next *string `form:"next,omitempty" json:"next,omitempty"`
-
-	// MinRound Include results at or after the specified min-round.
-	MinRound *uint64 `form:"min-round,omitempty" json:"min-round,omitempty"`
-
-	// MaxRound Include results at or before the specified max-round.
-	MaxRound *uint64 `form:"max-round,omitempty" json:"max-round,omitempty"`
-
-	// BeforeTime Include results before the given time. Must be an RFC 3339 formatted string.
-	BeforeTime *time.Time `form:"before-time,omitempty" json:"before-time,omitempty"`
-
-	// AfterTime Include results after the given time. Must be an RFC 3339 formatted string.
-	AfterTime *time.Time `form:"after-time,omitempty" json:"after-time,omitempty"`
-
-	// Proposer This parameter is an alias to the `proposers` parameter, it exposes the exact same functionality.
-	Proposer *[]string `form:"proposer,omitempty" json:"proposer,omitempty"`
-
 	// Proposers Accounts marked as proposer in the block header's participation updates. This parameter accepts a comma separated list of addresses.
 	Proposers *[]string `form:"proposers,omitempty" json:"proposers,omitempty"`
 
@@ -2076,7 +2026,7 @@ type SearchForTransactionsParams struct {
 	// * lsig - LogicSig
 	SigType *SearchForTransactionsParamsSigType `form:"sig-type,omitempty" json:"sig-type,omitempty"`
 
-	// GroupId Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters like +, / and = must be URL-encoded
+	// GroupId Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters that are URL-unsafe (i.e. =, /, +) must be URL-encoded
 	GroupId *string `form:"group-id,omitempty" json:"group-id,omitempty"`
 
 	// Txid Lookup the specific transaction by ID.

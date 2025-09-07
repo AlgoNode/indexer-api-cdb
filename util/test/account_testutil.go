@@ -59,7 +59,8 @@ func DecodeAddressOrPanic(addr string) sdk.Address {
 // ArbitraryString should be used to generate a pseudo-random string to put in the Note field of a Txn Header.
 // This is necessary to ensure the hash of any two txns used in tests are never the same.
 func ArbitraryString() []byte {
-	arb := make([]byte, config.MaxTxnNoteBytes)
+	future := config.Consensus[protocol.ConsensusFuture]
+	arb := make([]byte, future.MaxTxnNoteBytes)
 	_, err := rand.Read(arb)
 	if err != nil {
 		panic("rand.Read error")
@@ -412,9 +413,10 @@ func MakeGenesisBlock() sdk.Block {
 
 	blk := sdk.Block{
 		BlockHeader: sdk.BlockHeader{
-			Round:  0,
-			Branch: sdk.BlockHash{},
-			Seed:   sdk.Seed(genesis.Hash()),
+			Round:     0,
+			Branch:    sdk.BlockHash{},
+			Branch512: sdk.Sha512Digest{},
+			Seed:      sdk.Seed(genesis.Hash()),
 			TxnCommitments: sdk.TxnCommitments{
 				NativeSha512_256Commitment: sdk.Digest(sha512.Sum512_256(hashRep)),
 				Sha256Commitment:           sdk.Digest{},
