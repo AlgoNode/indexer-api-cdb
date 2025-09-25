@@ -10,7 +10,7 @@ COVERPKG := $(shell go list ./...  | grep -v '/cmd/' | egrep -v '(testing|test|m
 export GO_IMAGE = golang:$(shell go version | cut -d ' ' -f 3 | tail -c +3 )
 
 # This is the default target, build everything:
-all: cmd/algorand-indexer/algorand-indexer idb/postgres/internal/schema/setup_postgres_sql.go idb/mocks/IndexerDb.go
+all: cmd/algorand-indexer/algorand-indexer idb/postgres/internal/schema/setup_postgres_sql.go #idb/mocks/IndexerDb.go
 
 
 cmd/algorand-indexer/algorand-indexer: idb/postgres/internal/schema/setup_postgres_sql.go
@@ -61,4 +61,4 @@ test-generate:
 indexer-v-algod:
 	pytest -sv misc/parity
 
-.PHONY: all test e2e integration fmt lint deploy sign test-package package fakepackage cmd/algorand-indexer/algorand-indexer idb/mocks/IndexerDb.go indexer-v-algod
+.PHONY: all test e2e integration fmt lint deploy sign test-package package cmd/algorand-indexer/algorand-indexer idb/mocks/IndexerDb.go indexer-v-algod

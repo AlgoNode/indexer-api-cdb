@@ -679,9 +679,7 @@ func (si *ServerImplementation) SearchForApplicationBoxes(ctx echo.Context, appl
 	q := idb.ApplicationBoxQuery{
 		ApplicationID: applicationID,
 		OmitValues:    true,
-	}
-	if params.Limit != nil {
-		q.Limit = *params.Limit
+		Limit:         min(uintOrDefaultValue(params.Limit, si.opts.DefaultBoxesLimit), si.opts.MaxBoxesLimit),
 	}
 	if params.Next != nil {
 		encodedBoxName := *params.Next
@@ -768,6 +766,8 @@ func (si *ServerImplementation) LookupApplicationLogsByID(ctx echo.Context, appl
 	// If there is a match on an inner transaction, return the inner txn's logs
 	// instead of the root txn's logs.
 	filter.SkipInnerTransactionConversion = true
+	// Only return transactions that have application logs
+	filter.RequireApplicationLogs = true
 
 	err = validateTransactionFilter(&filter)
 	if err != nil {
@@ -782,6 +782,7 @@ func (si *ServerImplementation) LookupApplicationLogsByID(ctx echo.Context, appl
 
 	var logData []generated.ApplicationLogData
 	for _, txn := range txns {
+		// Since we set RequireApplicationLogs=true, all returned transactions should have logs
 		if txn.Logs != nil && len(*txn.Logs) > 0 {
 			logData = append(logData, generated.ApplicationLogData{
 				Txid: *txn.Id,
@@ -1023,12 +1024,6 @@ func (si *ServerImplementation) LookupTransaction(ctx echo.Context, txid string)
 	return ctx.JSON(http.StatusOK, response)
 }
 
-// SearchForBlocks is an alias for SearchForBlockHeaders
-// (GET /v2/blocks)
-func (si *ServerImplementation) SearchForBlocks(ctx echo.Context, params generated.SearchForBlocksParams) error {
-	return si.SearchForBlockHeaders(ctx, (generated.SearchForBlockHeadersParams)(params))
-}
-
 // SearchForBlockHeaders returns block headers matching the provided parameters
 // (GET /v2/blocks)
 func (si *ServerImplementation) SearchForBlockHeaders(ctx echo.Context, params generated.SearchForBlockHeadersParams) error {
@@ -1063,11 +1058,11 @@ func (si *ServerImplementation) SearchForBlockHeaders(ctx echo.Context, params g
 }
 
 // fetchBlockHeaders is used to query the backend for block headers, and compute the next token
-func (si *ServerImplementation) fetchBlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) ([]generated.BlockHeader, string, uint64 /*round*/, error) {
+func (si *ServerImplementation) fetchBlockHeaders(ctx context.Context, bf idb.BlockHeaderFilter) ([]generated.Block, string, uint64 /*round*/, error) {
 
 	var round uint64
 	var nextToken string
-	results := make([]generated.BlockHeader, 0)
+	results := make([]generated.Block, 0)
 	err := callWithTimeout(ctx, si.log, si.timeout, func(ctx context.Context) error {
 
 		// Open a channel from which result rows will be received
@@ -1412,7 +1407,7 @@ func (si *ServerImplementation) fetchBlock(ctx context.Context, round uint64, op
 		upgradeState := generated.BlockUpgradeState{
 			CurrentProtocol:        string(blockHeader.CurrentProtocol),
 			NextProtocol:           strPtr(string(blockHeader.NextProtocol)),
-			NextProtocolApprovals:  uint64Ptr(blockHeader.NextProtocolApprovals),
+			NextProtocolApprovals:  uint64Ptr(uint64(blockHeader.NextProtocolApprovals)),
 			NextProtocolSwitchOn:   uint64Ptr(uint64(blockHeader.NextProtocolSwitchOn)),
 			NextProtocolVoteBefore: uint64Ptr(uint64(blockHeader.NextProtocolVoteBefore)),
 		}
@@ -1468,6 +1463,7 @@ func (si *ServerImplementation) fetchBlock(ctx context.Context, round uint64, op
 			GenesisHash:            blockHeader.GenesisHash[:],
 			GenesisId:              blockHeader.GenesisID,
 			ParticipationUpdates:   partUpdates,
+			PreviousBlockHash512:   byteSliceOmitZeroPtr(blockHeader.Branch512[:]),
 			PreviousBlockHash:      blockHeader.Branch[:],
 			Proposer:               addrPtr(blockHeader.Proposer),
 			ProposerPayout:         uint64PtrOrNil(uint64(blockHeader.ProposerPayout)),
@@ -1479,6 +1475,7 @@ func (si *ServerImplementation) fetchBlock(ctx context.Context, round uint64, op
 			Transactions:           nil,
 			TransactionsRoot:       blockHeader.TxnCommitments.NativeSha512_256Commitment[:],
 			TransactionsRootSha256: blockHeader.TxnCommitments.Sha256Commitment[:],
+			TransactionsRootSha512: byteSliceOmitZeroPtr(blockHeader.TxnCommitments.Sha512Commitment[:]),
 			TxnCounter:             uint64Ptr(blockHeader.TxnCounter),
 			UpgradeState:           &upgradeState,
 			UpgradeVote:            &upgradeVote,

@@ -1509,6 +1509,10 @@
           "format": "byte",
           "x-algorand-format": "TEALProgram"
         },
+        "extra-program-pages": {
+          "description": "the number of extra program pages available to this app.",
+          "type": "integer"
+        },
         "local-state-schema": {
           "description": "local schema",
           "$ref": "#/definitions/ApplicationStateSchema"
@@ -1521,8 +1525,8 @@
           "description": "global state",
           "$ref": "#/definitions/TealKeyValueStore"
         },
-        "extra-program-pages": {
-          "description": "the number of extra program pages available to this app.",
+        "version": {
+          "description": "the number of updates to the application programs",
           "type": "integer"
         }
       }
@@ -1834,6 +1838,11 @@
           "type": "string",
           "format": "byte"
         },
+        "previous-block-hash-512": {
+          "description": "\\[prev512\\] Previous block hash, using SHA-512.",
+          "type": "string",
+          "format": "byte"
+        },
         "rewards": {
           "$ref": "#/definitions/BlockRewards"
         },
@@ -1871,6 +1880,11 @@
         },
         "transactions-root-sha256": {
           "description": "\\[txn256\\] TransactionsRootSHA256 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA256 hash function instead of the default SHA512_256. This commitment can be used on environments where only the SHA256 function exists.",
+          "type": "string",
+          "format": "byte"
+        },
+        "transactions-root-sha512": {
+          "description": "\\[txn512\\] TransactionsRootSHA512 is an auxiliary TransactionRoot, built using a vector commitment instead of a merkle tree, and SHA512 hash function instead of the default SHA512_256.",
           "type": "string",
           "format": "byte"
         },
@@ -2014,6 +2028,25 @@
         }
       }
     },
+    "BoxReference": {
+      "description": "BoxReference names a box by its name and the application ID it belongs to.",
+      "type": "object",
+      "required": [
+        "app",
+        "name"
+      ],
+      "properties": {
+        "app": {
+          "description": "Application ID to which the box belongs, or zero if referring to the called application.",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Base64 encoded box name",
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "HealthCheck": {
       "description": "A health check response.",
       "type": "object",
@@ -2049,6 +2082,44 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "HoldingRef": {
+      "description": "HoldingRef names a holding by referring to an Address and Asset it belongs to.",
+      "type": "object",
+      "required": [
+        "address",
+        "asset"
+      ],
+      "properties": {
+        "address": {
+          "description": "\\[d\\] Address in access list, or the sender of the transaction.",
+          "type": "string",
+          "x-algorand-format": "Address"
+        },
+        "asset": {
+          "description": "\\[s\\] Asset ID for asset in access list.",
+          "type": "integer"
+        }
+      }
+    },
+    "LocalsRef": {
+      "description": "LocalsRef names a local state by referring to an Address and App it belongs to.",
+      "type": "object",
+      "required": [
+        "address",
+        "app"
+      ],
+      "properties": {
+        "address": {
+          "description": "\\[d\\] Address in access list, or the sender of the transaction.",
+          "type": "string",
+          "x-algorand-format": "Address"
+        },
+        "app": {
+          "description": "\\[p\\] Application ID for app in access list, or zero if referring to the called application.",
+          "type": "integer"
         }
       }
     },
@@ -2116,6 +2187,34 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "ResourceRef": {
+      "description": "ResourceRef names a single resource. Only one of the fields should be set.",
+      "type": "object",
+      "properties": {
+        "address": {
+          "description": "\\[d\\] Account whose balance record is accessible by the executing ApprovalProgram or ClearStateProgram.",
+          "type": "string",
+          "x-algorand-format": "Address"
+        },
+        "application-id": {
+          "description": "\\[p\\] Application id whose GlobalState may be read by the executing\n ApprovalProgram or ClearStateProgram.",
+          "type": "integer"
+        },
+        "asset-id": {
+          "description": "\\[s\\] Asset whose AssetParams may be read by the executing\n ApprovalProgram or ClearStateProgram.",
+          "type": "integer"
+        },
+        "box": {
+          "$ref": "#/definitions/BoxReference"
+        },
+        "holding": {
+          "$ref": "#/definitions/HoldingRef"
+        },
+        "local": {
+          "$ref": "#/definitions/LocalsRef"
         }
       }
     },
@@ -2404,6 +2503,13 @@
             "type": "string"
           }
         },
+        "access": {
+          "description": "\\[al\\] Access unifies `accounts`, `foreign-apps`, `foreign-assets`, and `box-references` under a single list. If access is non-empty, these lists must be empty. If access is empty, those lists may be non-empty.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceRef"
+          }
+        },
         "accounts": {
           "description": "\\[apat\\] List of accounts in addition to the sender that may be accessed from the application's approval-program and clear-state-program.",
           "type": "array",
@@ -2411,6 +2517,13 @@
           "items": {
             "type": "string",
             "x-algorand-format": "Address"
+          }
+        },
+        "box-references": {
+          "description": "\\[apbx\\] the boxes that can be accessed by this transaction (and others in the same group).",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BoxReference"
           }
         },
         "foreign-apps": {
@@ -2449,6 +2562,10 @@
         },
         "extra-program-pages": {
           "description": "\\[epp\\] specifies the additional app program len requested in pages.",
+          "type": "integer"
+        },
+        "reject-version": {
+          "description": "\\[aprv\\] the lowest application version for which this transaction should immediately fail. 0 indicates that no version check should be performed.",
           "type": "integer"
         }
       }
@@ -2687,6 +2804,9 @@
         "multisig-signature": {
           "$ref": "#/definitions/TransactionSignatureMultisig"
         },
+        "logic-multisig-signature": {
+          "$ref": "#/definitions/TransactionSignatureMultisig"
+        },
         "signature": {
           "description": "\\[sig\\] ed25519 signature.",
           "type": "string",
@@ -2695,7 +2815,7 @@
       }
     },
     "TransactionSignatureMultisig": {
-      "description": "\\[msig\\] structure holding multiple subsignatures.\n\nDefinition:\ncrypto/multisig.go : MultisigSig",
+      "description": "structure holding multiple subsignatures.\n\nDefinition:\ncrypto/multisig.go : MultisigSig",
       "type": "object",
       "properties": {
         "subsignature": {
@@ -3228,7 +3348,7 @@
     },
     "group-id": {
       "type": "string",
-      "description": "Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters like +, / and = must be URL-encoded",
+      "description": "Lookup transactions by group ID. This field must be base64-encoded, and afterwards, base64 characters that are URL-unsafe (i.e. =, /, +) must be URL-encoded",
       "name": "group-id",
       "in": "query",
       "x-algorand-format": "base64"

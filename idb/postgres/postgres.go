@@ -576,13 +576,15 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 	}
 	if !tf.BeforeTime.IsZero() {
 		convertedTime := tf.BeforeTime.In(time.UTC)
-		whereParts = append(whereParts, fmt.Sprintf("t.round <= (SELECT bh.round FROM block_header bh WHERE bh.realtime < $%d ORDER BY bh.realtime DESC, bh.round DESC LIMIT 1)", partNumber))
+		whereParts = append(whereParts, fmt.Sprintf("t.round <= ("+
+			"SELECT round from block_header WHERE realtime < $%d ORDER BY realtime DESC LIMIT 1)", partNumber))
 		whereArgs = append(whereArgs, convertedTime)
 		partNumber++
 	}
 	if !tf.AfterTime.IsZero() {
 		convertedTime := tf.AfterTime.In(time.UTC)
-		whereParts = append(whereParts, fmt.Sprintf("t.round >= (SELECT bh.round FROM block_header bh WHERE bh.realtime > $%d ORDER BY bh.realtime ASC, bh.round ASC LIMIT 1)", partNumber))
+		whereParts = append(whereParts, fmt.Sprintf("t.round >= ("+
+			"SELECT round from block_header WHERE realtime > $%d ORDER BY realtime ASC LIMIT 1)", partNumber))
 		whereArgs = append(whereArgs, convertedTime)
 		partNumber++
 	}
@@ -689,6 +691,9 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 	if tf.SkipInnerTransactions {
 		whereParts = append(whereParts, "t.txid IS NOT NULL")
 	}
+	if tf.RequireApplicationLogs {
+		whereParts = append(whereParts, "t.txn -> 'dt' -> 'lg' IS NOT NULL")
+	}
 
 	// If these flags are true, return the root transaction
 	if tf.SkipInnerTransactionConversion || tf.SkipInnerTransactions {
@@ -718,9 +723,32 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 		// this should explicitly match the primary key on txn (round,intra)
 		query += " ORDER BY t.round, t.intra"
 	}
-	if tf.Limit != 0 {
-		query += fmt.Sprintf(" LIMIT %d", tf.Limit)
+
+	// Determine the LIMIT clause
+	var limit string
+	if len(tf.GroupID) > 0 && (tf.Limit == 0 || tf.Limit >= sdk.MaxTxGroupSize) {
+		// This is an optimization for the case where a group ID is being used.
+		//
+		// If a group ID is being used, we know that the query will return at most 16 results
+		// (the maximum size of an atomic transaction group).
+		//
+		// Therefore, we could get rid of the LIMIT clause.
+		//
+		// Skipping the limit clause seems to make the query optimizer pick the right index:
+		//
+		// CREATE INDEX txn_grp
+		// 	ON public.txn
+		//  USING btree (((txn #>> '{txn,grp}'::text[])))
+		//  WHERE ((txn #>> '{txn,grp}'::text[]) IS NOT NULL);
+		//
+		// This index normally would not be used if we didn't skip the LIMIT clause,
+		// the query execution plan would normally result in a sequential scan over the txn table.
+		limit = ""
+	} else if tf.Limit != 0 {
+		limit = fmt.Sprintf(" LIMIT %d", tf.Limit)
 	}
+	query += limit
+
 	return
 }
 
@@ -1671,6 +1699,9 @@ func (db *IndexerDb) yieldAccountsThread(req *getAccountsRequest) {
 						NumByteSlice: apps[i].LocalStateSchema.NumByteSlice,
 						NumUint:      apps[i].LocalStateSchema.NumUint,
 					}
+
+					aout[outpos].Params.Version = omitEmpty(apps[i].Version)
+
 					if apps[i].ExtraProgramPages > 0 {
 						epp := uint64(apps[i].ExtraProgramPages)
 						aout[outpos].Params.ExtraProgramPages = &epp
@@ -2636,6 +2667,8 @@ func (db *IndexerDb) yieldApplicationsThread(rows pgx.Rows, out chan idb.Applica
 			NumByteSlice: ap.LocalStateSchema.NumByteSlice,
 			NumUint:      ap.LocalStateSchema.NumUint,
 		}
+
+		rec.Application.Params.Version = omitEmpty(ap.Version)
 
 		if ap.ExtraProgramPages != 0 {
 			rec.Application.Params.ExtraProgramPages = new(uint64)
