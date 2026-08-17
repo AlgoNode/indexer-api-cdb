@@ -9,9 +9,10 @@ import (
 
 // Defines values for AccountSigType.
 const (
-	AccountSigTypeLsig AccountSigType = "lsig"
-	AccountSigTypeMsig AccountSigType = "msig"
-	AccountSigTypeSig  AccountSigType = "sig"
+	AccountSigTypeLsig  AccountSigType = "lsig"
+	AccountSigTypeMsig  AccountSigType = "msig"
+	AccountSigTypePqsig AccountSigType = "pqsig"
+	AccountSigTypeSig   AccountSigType = "sig"
 )
 
 // Defines values for Hashtype.
@@ -51,9 +52,10 @@ const (
 
 // Defines values for SigType.
 const (
-	SigTypeLsig SigType = "lsig"
-	SigTypeMsig SigType = "msig"
-	SigTypeSig  SigType = "sig"
+	SigTypeLsig  SigType = "lsig"
+	SigTypeMsig  SigType = "msig"
+	SigTypePqsig SigType = "pqsig"
+	SigTypeSig   SigType = "sig"
 )
 
 // Defines values for TxType.
@@ -153,6 +155,7 @@ type Account struct {
 	// * sig
 	// * msig
 	// * lsig
+	// * pqsig
 	// * or null if unknown
 	SigType *AccountSigType `json:"sig-type,omitempty"`
 
@@ -185,6 +188,7 @@ type Account struct {
 // * sig
 // * msig
 // * lsig
+// * pqsig
 // * or null if unknown
 type AccountSigType string
 
@@ -409,6 +413,9 @@ type Block struct {
 	// Bonus the potential bonus payout for this block.
 	Bonus *uint64 `json:"bonus,omitempty"`
 
+	// CongestionTax the fee required, beyond the minimum fee, for "normal" transactions in this block.
+	CongestionTax *uint64 `json:"congestion-tax,omitempty"`
+
 	// FeesCollected the sum of all fees paid by transactions in this block.
 	FeesCollected *uint64 `json:"fees-collected,omitempty"`
 
@@ -417,6 +424,9 @@ type Block struct {
 
 	// GenesisId \[gen\] ID to which this block belongs.
 	GenesisId string `json:"genesis-id"`
+
+	// Load the degree to which this block is full, based on the number of bytes in the final block compared to the maximum allowed. Expressed as a fixed-point integer with 6 digits of precision, so 1,000,000 is a completely full block.
+	Load *uint64 `json:"load,omitempty"`
 
 	// ParticipationUpdates Participation account data that needs to be checked/acted on by the network.
 	ParticipationUpdates *ParticipationUpdates `json:"participation-updates,omitempty"`
@@ -535,10 +545,13 @@ type Box struct {
 	Value []byte `json:"value"`
 }
 
-// BoxDescriptor Box descriptor describes an app box without a value.
+// BoxDescriptor Box descriptor describes an app box.
 type BoxDescriptor struct {
 	// Name Base64 encoded box name
 	Name []byte `json:"name"`
+
+	// Value Base64 encoded box value. Present only when the `values` query parameter is set to true.
+	Value *[]byte `json:"value,omitempty"`
 }
 
 // BoxReference BoxReference names a box by its name and the application ID it belongs to.
@@ -1123,6 +1136,9 @@ type TransactionHeartbeat struct {
 	// HbAddress \[hbad\] HbAddress is the account this txn is proving onlineness for.
 	HbAddress string `json:"hb-address"`
 
+	// HbChallengeDiscount \[hbc\] HbChallengeDiscount requests the challenge fee discount, reducing the required fee by one min fee. It is a request, not an assertion: it is granted only if HbAddress is actually under challenge.
+	HbChallengeDiscount *bool `json:"hb-challenge-discount,omitempty"`
+
 	// HbKeyDilution \[hbkd\] HbKeyDilution must match HbAddress account's current KeyDilution.
 	HbKeyDilution uint64 `json:"hb-key-dilution"`
 
@@ -1195,6 +1211,12 @@ type TransactionSignature struct {
 	// crypto/multisig.go : MultisigSig
 	Multisig *TransactionSignatureMultisig `json:"multisig,omitempty"`
 
+	// Pqsig structure holding a post-quantum signature.
+	//
+	// Definition:
+	// transactions/pqsig.go : PQSig
+	Pqsig *TransactionSignaturePQsig `json:"pqsig,omitempty"`
+
 	// Sig \[sig\] Standard ed25519 signature.
 	Sig *[]byte `json:"sig,omitempty"`
 }
@@ -1222,6 +1244,12 @@ type TransactionSignatureLogicsig struct {
 	// crypto/multisig.go : MultisigSig
 	MultisigSignature *TransactionSignatureMultisig `json:"multisig-signature,omitempty"`
 
+	// Pqsig structure holding a post-quantum signature.
+	//
+	// Definition:
+	// transactions/pqsig.go : PQSig
+	Pqsig *TransactionSignaturePQsig `json:"pqsig,omitempty"`
+
 	// Signature \[sig\] ed25519 signature.
 	Signature *[]byte `json:"signature,omitempty"`
 }
@@ -1248,6 +1276,24 @@ type TransactionSignatureMultisigSubsignature struct {
 
 	// Signature \[s\]
 	Signature *[]byte `json:"signature,omitempty"`
+}
+
+// TransactionSignaturePQsig structure holding a post-quantum signature.
+//
+// Definition:
+// transactions/pqsig.go : PQSig
+type TransactionSignaturePQsig struct {
+	// PublicKey \[pk\]
+	PublicKey []byte `json:"public-key"`
+
+	// Salt \[slt\] a single byte, added to ensure the hashed address is not an Ed25519 curve point
+	Salt *uint64 `json:"salt,omitempty"`
+
+	// Scheme \[sch\] identifies the internal signature scheme.
+	Scheme string `json:"scheme"`
+
+	// Signature \[sig\]
+	Signature []byte `json:"signature"`
 }
 
 // TransactionStateProof Fields for a state proof transaction.
@@ -1500,6 +1546,9 @@ type BoxesResponse struct {
 
 	// NextToken Used for pagination, when making another request provide this token with the next parameter.
 	NextToken *string `json:"next-token,omitempty"`
+
+	// Round The round for which this information is relevant.
+	Round *uint64 `json:"round,omitempty"`
 }
 
 // ErrorResponse defines model for ErrorResponse.

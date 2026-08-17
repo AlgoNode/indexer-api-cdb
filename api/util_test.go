@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algorand/indexer/v3/api/generated/v2"
 	"github.com/algorand/indexer/v3/idb"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
@@ -59,6 +60,95 @@ func TestInvalidTxnRow(t *testing.T) {
 	require.ErrorContains(t, err, "Txn and RootTxn should be mutually exclusive")
 }
 
+// TestPQsigConversion checks that a post-quantum signature is reported in both
+// of the places it can appear: directly on the SignedTxn, and inside a
+// delegated LogicSig.
+func TestPQsigConversion(t *testing.T) {
+	makePQSig := func(scheme string, salt byte) sdk.PQSig {
+		var s sdk.PQScheme
+		copy(s[:], scheme)
+		return sdk.PQSig{
+			Scheme:    s,
+			Salt:      sdk.PQAddressSalt(salt),
+			PublicKey: []byte{0x01, 0x02, 0x03},
+			Signature: []byte{0x04, 0x05, 0x06},
+		}
+	}
+
+	// Wrap a SignedTxn in the minimum TxnRow that txnRowToTransaction accepts.
+	// Only txnRowToTransaction fills in Transaction.Signature, so the more
+	// commonly used signedTxnWithAdToTransaction will not do here.
+	convert := func(t *testing.T, stxn sdk.SignedTxn) generated.TransactionSignature {
+		stxn.Txn.Type = sdk.PaymentTx
+		row := idb.TxnRow{
+			Round:     1,
+			RoundTime: time.Unix(1234567890, 0),
+			Txn:       &sdk.SignedTxnWithAD{SignedTxn: stxn},
+		}
+		txn, err := txnRowToTransaction(row)
+		require.NoError(t, err)
+		require.NotNil(t, txn.Signature)
+		return *txn.Signature
+	}
+
+	t.Run("on the SignedTxn", func(t *testing.T) {
+		sig := convert(t, sdk.SignedTxn{PQsig: makePQSig("F1", 7)})
+
+		require.NotNil(t, sig.Pqsig)
+		assert.Equal(t, "F1", sig.Pqsig.Scheme)
+		require.NotNil(t, sig.Pqsig.Salt)
+		assert.Equal(t, uint64(7), *sig.Pqsig.Salt)
+		assert.Equal(t, []byte{0x01, 0x02, 0x03}, sig.Pqsig.PublicKey)
+		assert.Equal(t, []byte{0x04, 0x05, 0x06}, sig.Pqsig.Signature)
+
+		assert.Nil(t, sig.Logicsig)
+	})
+
+	t.Run("delegated to a LogicSig", func(t *testing.T) {
+		sig := convert(t, sdk.SignedTxn{
+			Lsig: sdk.LogicSig{
+				Logic: []byte{0x01, 0x20, 0x01, 0x01, 0x22},
+				PQsig: makePQSig("F1", 7),
+			},
+		})
+
+		require.NotNil(t, sig.Logicsig)
+		require.NotNil(t, sig.Logicsig.Pqsig)
+		assert.Equal(t, "F1", sig.Logicsig.Pqsig.Scheme)
+
+		// The delegating signature belongs to the lsig, not the txn.
+		assert.Nil(t, sig.Pqsig)
+	})
+
+	// LogicSig.Blank() does not yet consider PQsig, so a LogicSig carrying
+	// nothing but a PQsig would otherwise be dropped entirely.
+	t.Run("LogicSig holding only a PQsig", func(t *testing.T) {
+		sig := convert(t, sdk.SignedTxn{
+			Lsig: sdk.LogicSig{PQsig: makePQSig("F1", 7)},
+		})
+
+		require.NotNil(t, sig.Logicsig)
+		require.NotNil(t, sig.Logicsig.Pqsig)
+		assert.Equal(t, "F1", sig.Logicsig.Pqsig.Scheme)
+	})
+
+	// Salt goes through uint64PtrOrNil, so a zero salt is omitted rather than
+	// reported as 0. Clients must treat an absent salt as 0.
+	t.Run("zero salt is omitted", func(t *testing.T) {
+		sig := convert(t, sdk.SignedTxn{PQsig: makePQSig("F1", 0)})
+
+		require.NotNil(t, sig.Pqsig)
+		assert.Nil(t, sig.Pqsig.Salt)
+	})
+
+	t.Run("absent when unsigned by a PQsig", func(t *testing.T) {
+		sig := convert(t, sdk.SignedTxn{Sig: sdk.Signature{0x01}})
+
+		assert.Nil(t, sig.Pqsig)
+		assert.Nil(t, sig.Logicsig)
+	})
+}
+
 // TestTxnAccessConversion tests the conversion of txn.Access field combinations
 // from SDK types to the generated API types, exercising all the logic in
 // converter_utils.go lines 504-588
@@ -66,7 +156,7 @@ func TestTxnAccessConversion(t *testing.T) {
 	// Helper to create a valid non-zero address
 	makeAddress := func(seed byte) sdk.Address {
 		var addrBytes [32]byte
-		for i := 0; i < 32; i++ {
+		for i := range addrBytes {
 			addrBytes[i] = seed + byte(i)
 		}
 		return sdk.Address(addrBytes)
@@ -833,5 +923,70 @@ func TestTxnAccessConversion(t *testing.T) {
 		require.NotNil(t, result.ApplicationTransaction.BoxReferences)
 		// Should have 0 items because the invalid reference was skipped via continue
 		assert.Equal(t, 0, len(*result.ApplicationTransaction.BoxReferences))
+	})
+}
+
+func TestBlockLoadAndCongestionTaxConversion(t *testing.T) {
+	t.Run("Set", func(t *testing.T) {
+		block := hdrRowToBlock(idb.BlockRow{
+			BlockHeader: sdk.BlockHeader{
+				Load:          500000,
+				CongestionTax: 1234,
+			},
+		})
+
+		require.NotNil(t, block.Load)
+		assert.Equal(t, uint64(500000), *block.Load)
+		require.NotNil(t, block.CongestionTax)
+		assert.Equal(t, uint64(1234), *block.CongestionTax)
+	})
+
+	// An uncongested block leaves both at zero, and they are omitted rather
+	// than reported as 0, keeping responses unchanged for such blocks.
+	t.Run("Zero", func(t *testing.T) {
+		block := hdrRowToBlock(idb.BlockRow{BlockHeader: sdk.BlockHeader{}})
+
+		assert.Nil(t, block.Load)
+		assert.Nil(t, block.CongestionTax)
+	})
+}
+
+func TestHeartbeatChallengeDiscountConversion(t *testing.T) {
+	extra := rowData{
+		Round:     1,
+		RoundTime: 1234567890,
+		Intra:     0,
+	}
+
+	heartbeatTxn := func(discount bool) *sdk.SignedTxnWithAD {
+		return &sdk.SignedTxnWithAD{
+			SignedTxn: sdk.SignedTxn{
+				Txn: sdk.Transaction{
+					Type: sdk.HeartbeatTx,
+					HeartbeatTxnFields: &sdk.HeartbeatTxnFields{
+						HbChallengeDiscount: discount,
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("Requested", func(t *testing.T) {
+		result, err := signedTxnWithAdToTransaction(heartbeatTxn(true), extra)
+		require.NoError(t, err)
+
+		require.NotNil(t, result.HeartbeatTransaction)
+		require.NotNil(t, result.HeartbeatTransaction.HbChallengeDiscount)
+		assert.True(t, *result.HeartbeatTransaction.HbChallengeDiscount)
+	})
+
+	// The flag is a request, so the common case of not asking for the discount
+	// is reported by omitting it entirely.
+	t.Run("Not requested", func(t *testing.T) {
+		result, err := signedTxnWithAdToTransaction(heartbeatTxn(false), extra)
+		require.NoError(t, err)
+
+		require.NotNil(t, result.HeartbeatTransaction)
+		assert.Nil(t, result.HeartbeatTransaction.HbChallengeDiscount)
 	})
 }

@@ -175,7 +175,10 @@ func msigToTransactionMsig(msig sdk.MultisigSig) *generated.TransactionSignature
 }
 
 func lsigToTransactionLsig(lsig sdk.LogicSig) *generated.TransactionSignatureLogicsig {
-	if lsig.Blank() {
+	// LogicSig.Blank() does not consider PQsig in the current version (it will
+	// eventually, of course), but for now we need the extra explicit
+	// check. Remove it when sdk updates.
+	if lsig.Blank() && lsig.PQsig.Blank() {
 		return nil
 	}
 
@@ -189,9 +192,24 @@ func lsigToTransactionLsig(lsig sdk.LogicSig) *generated.TransactionSignatureLog
 		Logic:                  lsig.Logic,
 		LogicMultisigSignature: msigToTransactionMsig(lsig.LMsig),
 		MultisigSignature:      msigToTransactionMsig(lsig.Msig),
+		Pqsig:                  pqsigToTransactionPQsig(lsig.PQsig),
 		Signature:              sigToTransactionSig(lsig.Sig),
 	}
 
+	return &ret
+}
+
+func pqsigToTransactionPQsig(pqsig sdk.PQSig) *generated.TransactionSignaturePQsig {
+	if pqsig.Blank() {
+		return nil
+	}
+
+	ret := generated.TransactionSignaturePQsig{
+		Scheme:    string(pqsig.Scheme[:]),
+		Salt:      uint64PtrOrNil(uint64(pqsig.Salt)),
+		PublicKey: pqsig.PublicKey,
+		Signature: pqsig.Signature,
+	}
 	return &ret
 }
 
@@ -288,6 +306,7 @@ func txnRowToTransaction(row idb.TxnRow) (generated.Transaction, error) {
 		Logicsig: lsigToTransactionLsig(stxn.Lsig),
 		Multisig: msigToTransactionMsig(stxn.Msig),
 		Sig:      sigToTransactionSig(stxn.Sig),
+		Pqsig:    pqsigToTransactionPQsig(stxn.PQsig),
 	}
 
 	var txid string
@@ -327,7 +346,7 @@ func hdrRowToBlock(row idb.BlockRow) generated.Block {
 		UpgradePropose: strPtr(string(row.BlockHeader.UpgradePropose)),
 	}
 
-	var partUpdates *generated.ParticipationUpdates = &generated.ParticipationUpdates{}
+	var partUpdates = &generated.ParticipationUpdates{}
 	if len(row.BlockHeader.ExpiredParticipationAccounts) > 0 {
 		addrs := make([]string, len(row.BlockHeader.ExpiredParticipationAccounts))
 		for i := 0; i < len(addrs); i++ {
@@ -368,9 +387,11 @@ func hdrRowToBlock(row idb.BlockRow) generated.Block {
 
 	ret := generated.Block{
 		Bonus:                  uint64PtrOrNil(uint64(row.BlockHeader.Bonus)),
+		CongestionTax:          uint64PtrOrNil(uint64(row.BlockHeader.CongestionTax)),
 		FeesCollected:          uint64PtrOrNil(uint64(row.BlockHeader.FeesCollected)),
 		GenesisHash:            row.BlockHeader.GenesisHash[:],
 		GenesisId:              row.BlockHeader.GenesisID,
+		Load:                   uint64PtrOrNil(uint64(row.BlockHeader.Load)),
 		ParticipationUpdates:   partUpdates,
 		PreviousBlockHash512:   byteSliceOmitZeroPtr(row.BlockHeader.Branch512[:]),
 		PreviousBlockHash:      row.BlockHeader.Branch[:],
@@ -696,8 +717,9 @@ func signedTxnWithAdToTransaction(stxn *sdk.SignedTxnWithAD, extra rowData) (gen
 	case sdk.HeartbeatTx:
 		hb := stxn.Txn.HeartbeatTxnFields
 		hbTxn := generated.TransactionHeartbeat{
-			HbAddress:     hb.HbAddress.String(),
-			HbKeyDilution: hb.HbKeyDilution,
+			HbAddress:           hb.HbAddress.String(),
+			HbChallengeDiscount: boolPtrOrNil(hb.HbChallengeDiscount),
+			HbKeyDilution:       hb.HbKeyDilution,
 			HbProof: generated.HbProofFields{
 				HbPk:     byteSliceOmitZeroPtr(hb.HbProof.PK[:]),
 				HbPk1sig: byteSliceOmitZeroPtr(hb.HbProof.PK1Sig[:]),
@@ -758,11 +780,12 @@ func signedTxnWithAdToTransaction(stxn *sdk.SignedTxnWithAD, extra rowData) (gen
 		itxns := make([]generated.Transaction, 0, len(stxn.ApplyData.EvalDelta.InnerTxns))
 		for _, t := range stxn.ApplyData.EvalDelta.InnerTxns {
 			extra2 := extra
-			if t.Txn.Type == sdk.ApplicationCallTx {
+			switch t.Txn.Type {
+			case sdk.ApplicationCallTx:
 				extra2.AssetID = uint64(t.ApplyData.ApplicationID)
-			} else if t.Txn.Type == sdk.AssetConfigTx {
+			case sdk.AssetConfigTx:
 				extra2.AssetID = uint64(t.ApplyData.ConfigAsset)
-			} else {
+			default:
 				extra2.AssetID = 0
 			}
 			extra2.AssetCloseAmount = t.ApplyData.AssetClosingAmount

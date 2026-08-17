@@ -1,9 +1,10 @@
 package api
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -125,7 +126,7 @@ func (ddm *DisplayDisabledMap) validateSchema() error {
 		}
 	}
 
-	return fmt.Errorf(sb.String())
+	return errors.New(sb.String())
 }
 
 // toDisabledMapConfig creates a disabled map config from a display disabled map.  If the swag pointer
@@ -172,7 +173,7 @@ func (ddm *DisplayDisabledMap) toDisabledMapConfig(swag *openapi3.T) (*DisabledM
 // MakeDisabledMapConfigFromFile loads a file containing a disabled map configuration.
 func MakeDisabledMapConfigFromFile(swag *openapi3.T, filePath string) (*DisabledMapConfig, error) {
 	// First load the file...
-	f, err := ioutil.ReadFile(filePath)
+	f, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}

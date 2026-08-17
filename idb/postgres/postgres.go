@@ -576,15 +576,25 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 	}
 	if !tf.BeforeTime.IsZero() {
 		convertedTime := tf.BeforeTime.In(time.UTC)
-		whereParts = append(whereParts, fmt.Sprintf("t.round <= ("+
-			"SELECT round from block_header WHERE realtime < $%d ORDER BY realtime DESC LIMIT 1)", partNumber))
+		if joinParticipation {
+			whereParts = append(whereParts, fmt.Sprintf("p.round <= ("+
+				"SELECT round from block_header WHERE realtime < $%d ORDER BY realtime DESC LIMIT 1)", partNumber))
+		} else {
+			whereParts = append(whereParts, fmt.Sprintf("t.round <= ("+
+				"SELECT round from block_header WHERE realtime < $%d ORDER BY realtime DESC LIMIT 1)", partNumber))
+		}
 		whereArgs = append(whereArgs, convertedTime)
 		partNumber++
 	}
 	if !tf.AfterTime.IsZero() {
 		convertedTime := tf.AfterTime.In(time.UTC)
-		whereParts = append(whereParts, fmt.Sprintf("t.round >= ("+
-			"SELECT round from block_header WHERE realtime > $%d ORDER BY realtime ASC LIMIT 1)", partNumber))
+		if joinParticipation {
+			whereParts = append(whereParts, fmt.Sprintf("p.round >= ("+
+				"SELECT round from block_header WHERE realtime > $%d ORDER BY realtime ASC LIMIT 1)", partNumber))
+		} else {
+			whereParts = append(whereParts, fmt.Sprintf("t.round >= ("+
+				"SELECT round from block_header WHERE realtime > $%d ORDER BY realtime ASC LIMIT 1)", partNumber))
+		}
 		whereArgs = append(whereArgs, convertedTime)
 		partNumber++
 	}
@@ -707,7 +717,7 @@ func buildTransactionQuery(tf idb.TransactionFilter) (query string, whereArgs []
 	}
 
 	// join in the root transaction if needed
-	if !(tf.SkipInnerTransactionConversion || tf.SkipInnerTransactions) {
+	if !tf.SkipInnerTransactionConversion && !tf.SkipInnerTransactions {
 		query += " LEFT OUTER JOIN txn root ON t.round = root.round AND (t.extra->>'root-intra')::int = root.intra"
 	}
 
@@ -3013,12 +3023,23 @@ func (db *IndexerDb) DeleteTransactions(ctx context.Context, keep uint64) error 
 	// delete old transactions and update metastate
 	deleteTxns := func(tx pgx.Tx) error {
 		db.log.Infof("deleteTxns(): removing transactions before round %d", keep)
-		// delete query
+
+		// delete from txn
 		query := "DELETE FROM txn WHERE round < $1"
 		cmd, err2 := tx.Exec(ctx, query, keep)
 		if err2 != nil {
 			return fmt.Errorf("deleteTxns(): transaction delete err %w", err2)
 		}
+		db.log.Infof("%d transactions deleted", cmd.RowsAffected())
+
+		// delete from txn_participation
+		participationQuery := "DELETE FROM txn_participation WHERE round < $1"
+		participationCmd, err2 := tx.Exec(ctx, participationQuery, keep)
+		if err2 != nil {
+			return fmt.Errorf("deleteTxns(): txn_participation delete err %w", err2)
+		}
+		db.log.Infof("%d txn_participation records deleted", participationCmd.RowsAffected())
+
 		t := time.Now().UTC()
 		// update metastate
 		status := types.DeleteStatus{
@@ -3030,7 +3051,7 @@ func (db *IndexerDb) DeleteTransactions(ctx context.Context, keep uint64) error 
 		if err2 != nil {
 			return fmt.Errorf("deleteTxns(): metastate update err %w", err2)
 		}
-		db.log.Infof("%d transactions deleted, last pruned at %s", cmd.RowsAffected(), status.LastPruned)
+		db.log.Infof("last pruned at %s", status.LastPruned)
 		return nil
 	}
 	err := db.txWithRetry(serializable, deleteTxns)
